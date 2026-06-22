@@ -16,14 +16,14 @@ Each task is tagged with the question(s) that surfaced it. Priorities: **P0** (c
 ### T1. `hkdata-find.sh` URL-encode the keyword
 **Surfaced by:** Q2, Q3, Q4, Q5 (crash on `unemployment district`, `public housing`, `air quality`, `長者`)
 **Symptom:** Multi-word keywords with spaces cause `json.decoder.JSONDecodeError: Expecting value` because the raw space in `q=${KEYWORD}` produces an invalid CKAN request. Non-ASCII keywords (Chinese) crash with 400 Bad Request.
-**Fix:** In `bin/hkdata-find.sh:44`, URL-encode `KEYWORD` before substituting into `API_URL`. Use bash-native escaping or `python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$KEYWORD"`.
-**Verify:** `bash ./bin/hkdata-find.sh "unemployment district"` returns results, not a traceback. `bash ./bin/hkdata-find.sh "長者"` doesn't crash.
+**Fix:** In `bin/hkdata-find.sh:44`, URL-encode `KEYWORD` before substituting into `API_URL`. Use bash-native escaping or `python3 -c "import urllib.parse,sys;print(urllib.parse.quote(sys.argv[1]))" "$KEYWORD"`. *(Note: if T19 is done first, this is automatically fixed by `urllib.parse.quote()` in `search.py` — this task only applies if T19 is deferred.)*
+**Verify:** `bash ./scripts/hkdata-find.sh "unemployment district"` returns results, not a traceback. `bash ./scripts/hkdata-find.sh "長者"` doesn't crash.
 
 ### T2. `hkdata-info.sh` output breaks JSON parsers
 **Surfaced by:** Q1, Q2, Q3, Q4, Q5 (had to use `tail -n +2` before `python3 -m json.tool` in every run)
 **Symptom:** The script prints `Fetching dataset info for: <id>` before the JSON body, so `| python3 -m json.tool` and `| python3 -c "import json"` fail on the combined output.
 **Fix:** Either (a) print the status line to stderr (`echo "..." >&2`) so stdout is pure JSON, or (b) document that consumers must skip the first line. Option (a) is cleaner and matches `hkdata-find.sh`'s behavior (its echo goes to stdout too — same bug there).
-**Verify:** `bash ./bin/hkdata-info.sh "<id>" | python3 -m json.tool` works without `tail`.
+**Verify:** `bash ./scripts/hkdata-info.sh "<id>" | python3 -m json.tool` works without `tail`.
 
 ---
 
@@ -98,6 +98,7 @@ Use generic "task list" wording, not OpenCode-specific `todowrite`.
 **Symptom:** Censtatd's `api/get.php` blocks requests without a browser-like User-Agent. `curl` sends one by default; Python `urllib` does not. Agents that use Python's `requests` or `urllib` will hit 403 and may misdiagnose as "endpoint dead".
 **Fix:** Add a note to SKILL.md "API Notes" section:
 > "Censtatd `api/get.php` rejects requests without a User-Agent header. `curl` works by default. If using Python, set `headers={'User-Agent': 'curl/8.0'}` or equivalent."
+*(Note: if T19 is done first, this is automatically fixed — `urllib.request` sets User-Agent globally in the Python CLI. This task only applies if T19 is deferred.)*
 **Verify:** Python-based test of Censtatd API succeeds with the documented header.
 
 ### T10. Censtatd `wbr.html?download_csv=1` is broken for programmatic use
@@ -121,6 +122,7 @@ Use generic "task list" wording, not OpenCode-specific `todowrite`.
 - Housing Authority variant (with `&`)
 - Chinese name (Traditional)
 - Censtatd DC code (A–T)
+*(Note: if T19 is done first, this is automatically provided by `normalize.py` — a reusable normalization module. This task only applies if T19 is deferred.)*
 **Verify:** Agent can join any two district-keyed datasets without guessing.
 
 ### T13. Step 5 checklist is a comment block, not enforceable
@@ -151,14 +153,14 @@ Use generic "task list" wording, not OpenCode-specific `todowrite`.
 
 ---
 
-## P1 — Scalability / architecture (after 2 eval runs)
+## P1 — Scalability / architecture (after 5 eval runs)
 
-The skill is designed for linear growth — every new dataset adds a row to SKILL.md, an entry to index.md, a reference file, and possibly log entries. After only 2 eval runs we're at 25 reference files, 505-line SKILL.md, 80 table rows in SKILL.md, and Step 1 (`ls ./references/`) can no longer reliably tell the agent whether a query matches a verified dataset. This will not scale to 50+ datasets.
+The skill is designed for linear growth — every new dataset adds a row to SKILL.md, an entry to index.md, a reference file, and possibly log entries. After 5 eval runs we're at 32 reference files, 530+ line SKILL.md, 90+ table rows in SKILL.md, and Step 1 (`ls ./references/`) can no longer reliably tell the agent whether a query matches a verified dataset. This will not scale to 50+ datasets.
 
 ### T16. Local search index for verified datasets and experience history
 **Surfaced by:** Q1–Q5 (Step 1 is just `ls ./references/` — agent had to open multiple files and guess matches from filenames; strategy-registry is a flat markdown table that doesn't surface relevant past strategies by query pattern)
 **Symptom:**
-- 25+ reference files, 80+ table rows across SKILL.md + index.md, failure-log and strategy-registry growing in flat markdown
+- 32 reference files, 90+ table rows across SKILL.md + index.md, failure-log and strategy-registry growing in flat markdown
 - Step 1 (`ls ./references/`) only returns filenames — no keyword, category, or topic match
 - Agent must read several reference files to determine if a verified dataset answers the query
 - Strategy-registry entries are grouped by category but not searchable by symptom or keyword pattern
@@ -172,26 +174,28 @@ The skill is designed for linear growth — every new dataset adds a row to SKIL
    - `join_keys` (e.g., "district", "period") if the dataset is joinable
    - `last_verified` date
    - `known_quirks` (broken endpoint, auth required, etc.)
+   - `fallback_search_terms` — when CKAN returns 0 results for this dataset's topic, the web search query that worked last time (sourced from `logs/strategy-registry.jsonl`). E.g., `"site:data.gov.hk vessel arrival marine department"`. This makes the ~30% CKAN miss rate recoverable without improvising a new search query each time.
 
-2. **Search script:** `bin/hkdata-search-local.sh "<query>"` — takes a natural-language query, tokenizes it, and returns ranked matching datasets from `search-index.json` using simple TF/keyword overlap (no embeddings needed at this scale). Output: `dataset-id | title | category | score | filename`.
+2. **Search subcommand:** `python3 ./scripts/hkdata.py search-local "<query>"` — takes a natural-language query, tokenizes it, and returns ranked matching datasets from `search-index.json` using simple TF/keyword overlap (no embeddings needed at this scale). Output: `dataset-id | title | category | score | filename`.
 
-3. **Index builder:** `bin/hkdata-reindex.sh` — walks `references/*.md` (excluding template + index), extracts structured fields, writes `search-index.json`. Run automatically at end of Step 5, or manually.
+3. **Index builder subcommand:** `python3 ./scripts/hkdata.py reindex` — walks `references/*.md` (excluding template + index), extracts structured fields, writes `search-index.json`. Run automatically at end of Step 5, or manually.
 
-4. **Replace Step 1:** Change SKILL.md Step 1 from `ls ./references/` to `bash ./bin/hkdata-search-local.sh "<user query>"`. If score > threshold, read the matched reference file. If no match, proceed to Step 2.
+4. **Replace Step 1:** Change SKILL.md Step 1 from `ls ./references/` to `python3 ./scripts/hkdata.py search-local "<user query>"`. If score > threshold, read the matched reference file. If no match, proceed to Step 2.
 
-5. **Experience history:** Extend the index to include entries from `strategy-registry.md` and `failure-log.md` as searchable records (type: `strategy` or `failure`), so the agent can ask "has anyone solved a `<symptom>` before?" and get a ranked list.
+5. **Experience history:** Extend the index to include entries from `logs/strategy-registry.jsonl` and `logs/failure-log.jsonl` (T18) as searchable records (type: `strategy` or `failure`), so the agent can ask "has anyone solved a `<symptom>` before?" and get a ranked list.
 
 **Scope guardrail:** This is keyword/TF search, NOT vector embeddings. At 25–200 datasets, keyword overlap is fast, deterministic, debuggable, and needs no model. Revisit embeddings only if the dataset count exceeds ~500 and keyword search recall drops.
 
 **Verify:**
-- `bash ./bin/hkdata-search-local.sh "vessel arrival port"` returns the Marine Dept dataset in top 3
-- `bash ./bin/hkdata-search-local.sh "district unemployment"` returns the LFPR dataset and surfaces the failure-log entry about "UR by district not available"
+- `python3 ./scripts/hkdata.py search-local "vessel arrival port"` returns the Marine Dept dataset in top 3
+- `python3 ./scripts/hkdata.py search-local "district unemployment"` returns the LFPR dataset and surfaces the failure-log entry about "UR by district not available"
+- Index records for Marine Dept, EPD airteam, SWD, and ferry datasets include `fallback_search_terms` populated from strategy-registry
 - Step 1 no longer requires the agent to read multiple files by hand
 
 ### T17. SKILL.md is a data registry — extract the registry, stop growing the skill file
-**Surfaced by:** Q1–Q5 (every new dataset adds a row to SKILL.md:187-210; file is 505 lines and growing; the Verified Datasets table is duplicated in `references/index.md`)
+**Surfaced by:** Q1–Q5 (every new dataset adds a row to SKILL.md; file is 530+ lines and growing; the Verified Datasets table is duplicated in `references/index.md`)
 **Symptom:**
-- SKILL.md is 505 lines, 23 sections, 80 table rows — and grows with every dataset
+- SKILL.md is 530+ lines, 23 sections, 90+ table rows — and grows with every dataset
 - The "Verified Datasets" table (SKILL.md:187-210) is duplicated in `references/index.md:7-32`
 - Two sources of truth → drift risk (already seen: index.md By Category section was out of sync)
 - SKILL.md should be the workflow definition (stable), not a data registry (growing)
@@ -199,7 +203,7 @@ The skill is designed for linear growth — every new dataset adds a row to SKIL
 **Fix:** Separate concerns:
 
 1. **SKILL.md = workflow only.** Remove the full Verified Datasets table and the Category Mapping table from SKILL.md. Replace with a short pointer:
-   > "Verified datasets are listed in `references/index.md` and are searchable via `bash ./bin/hkdata-search-local.sh "<query>"` (see T16). The category → filename prefix mapping is in `references/category-mapping.md`."
+   > "Verified datasets are listed in `references/index.md` and are searchable via `python3 ./scripts/hkdata.py search-local "<query>"` (see T16). The category → filename prefix mapping is in `references/category-mapping.md`."
 
 2. **`references/index.md` = the single dataset registry.** Already exists — make it the canonical source. Remove the duplicate table from SKILL.md.
 
@@ -210,7 +214,7 @@ The skill is designed for linear growth — every new dataset adds a row to SKIL
 5. **Keep SKILL.md stable:** After this refactor, adding a new dataset should only touch `references/` files and the search index — never SKILL.md.
 
 **Verify:**
-- SKILL.md drops from 505 to <300 lines
+- SKILL.md drops from 530+ to <300 lines
 - Adding a new dataset (run Step 5) does not modify SKILL.md
 - `references/index.md` is the only place the full dataset table lives
 - No information is lost — everything moved, not deleted
@@ -226,16 +230,16 @@ The skill is designed for linear growth — every new dataset adds a row to SKIL
 
 1. **`failure-log.jsonl`** — one record per line, fields: `date`, `task`, `component`, `symptom`, `root_cause`, `solution`, `verified`, `keywords` (for search).
 2. **`strategy-registry.jsonl`** — one record per line, fields: `category`, `topic`, `method`, `result`, `keywords`.
-3. **`bin/hkdata-log-render.sh`** — regenerates the existing markdown files (`failure-log.md`, `strategy-registry.md`) from the JSONL sources, preserving the Cantonese format for human reading.
-4. **`bin/hkdata-log-search.sh "<symptom>"`** — searches the JSONL by keyword match, returns matching records.
-5. Step 2 fallback becomes: `bash ./bin/hkdata-log-search.sh "<keyword>"` instead of "read the whole file".
+3. **`python3 ./scripts/hkdata.py log-render`** — regenerates the existing markdown files (`logs/failure-log.md`, `logs/strategy-registry.md`) from the JSONL sources, preserving the Cantonese format for human reading.
+4. **`python3 ./scripts/hkdata.py log-search "<keyword>"`** — searches the JSONL by keyword match, returns matching records.
+5. Step 2 fallback becomes: `python3 ./scripts/hkdata.py log-search "<keyword>"` instead of "read the whole file".
 6. Step 5 appends to the JSONL, then re-renders the markdown.
 
 **Migrate existing entries:** Write a one-off parser that converts the current markdown entries to JSONL. Keep the markdown files as the rendered view (humans still read those).
 
 **Verify:**
-- `bash ./bin/hkdata-log-search.sh "vessel 0 results"` returns the Marine Dept failure entry
-- `bash ./bin/hkdata-log-search.sh "district unemployment"` returns the UR-by-district failure entry
+- `python3 ./scripts/hkdata.py log-search "vessel 0 results"` returns the Marine Dept failure entry
+- `python3 ./scripts/hkdata.py log-search "district unemployment"` returns the UR-by-district failure entry
 - The markdown files still render correctly after re-indexing
 - Agent no longer needs to read the full failure-log during Step 2 fallback
 
@@ -255,7 +259,7 @@ The skill is designed for linear growth — every new dataset adds a row to SKIL
 
 **Fix:** Migrate to a Python CLI with thin bash wrappers for backward compatibility.
 
-1. **Single CLI entry point:** `bin/hkdata.py` with argparse subcommands:
+1. **Single CLI entry point:** `scripts/hkdata.py` with argparse subcommands:
    - `search "<keyword>" [--page N]` — CKAN package_search (replaces `hkdata-find.sh`)
    - `info "<dataset-id>"` — CKAN package_show (replaces `hkdata-info.sh`)
    - `test "<resource-url>"` — format-aware endpoint tester (replaces Step 4's `curl | json.tool`)
@@ -277,9 +281,9 @@ The skill is designed for linear growth — every new dataset adds a row to SKIL
 
 3. **Thin bash wrappers** (preserve backward compat for agents/skills that already call the old scripts):
    ```bash
-   # bin/hkdata-find.sh
+   # scripts/hkdata-find.sh
    exec python3 "$(dirname "$0")/hkdata.py" search "$@"
-   # bin/hkdata-info.sh
+   # scripts/hkdata-info.sh
    exec python3 "$(dirname "$0")/hkdata.py" info "$@"
    ```
 
@@ -313,16 +317,16 @@ The skill is designed for linear growth — every new dataset adds a row to SKIL
 - T12 (district normalization) → `normalize.py` module, reusable across all joins
 
 **Verify:**
-- `python3 ./bin/hkdata.py search "長者"` works without crash (URL-encoded, Unicode-safe)
-- `python3 ./bin/hkdata.py search "unemployment district"` works (multi-word)
-- `python3 ./bin/hkdata.py info "hk-censtatd-tablechart-210-06821" | python3 -m json.tool` works (no `tail -n +2` needed)
-- `python3 ./bin/hkdata.py test "https://www.swd.gov.hk/datagovhk/elderly/list-of-neighbourhood-elderly-centres.csv"` detects UTF-16-LE + tab and parses correctly
-- `python3 ./bin/hkdata.py test "https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML"` detects XML and summarizes structure
-- `bash ./bin/hkdata-find.sh "elderly"` still works (backward compat wrapper)
+- `python3 ./scripts/hkdata.py search "長者"` works without crash (URL-encoded, Unicode-safe)
+- `python3 ./scripts/hkdata.py search "unemployment district"` works (multi-word)
+- `python3 ./scripts/hkdata.py info "hk-censtatd-tablechart-210-06821" | python3 -m json.tool` works (no `tail -n +2` needed)
+- `python3 ./scripts/hkdata.py test "https://www.swd.gov.hk/datagovhk/elderly/list-of-neighbourhood-elderly-centres.csv"` detects UTF-16-LE + tab and parses correctly
+- `python3 ./scripts/hkdata.py test "https://www.mardep.gov.hk/e_files/en/opendata/RP05005i.XML"` detects XML and summarizes structure
+- `bash ./scripts/hkdata-find.sh "elderly"` still works (backward compat wrapper)
 - `pytest tests/` passes (basic unit tests for `parse.py`, `normalize.py`, `search.py`)
 - No third-party imports — only stdlib
 
-**Scope guardrail:** This is a refactor of the script layer, not the skill workflow. SKILL.md's 5-step workflow stays the same; only the commands in Steps 2–4 change from `bash ./bin/hkdata-*.sh` to `python3 ./bin/hkdata.py <subcommand>` (with bash wrappers preserving old syntax). AGENTS.md's "Dependencies are only curl + python3" becomes "Dependencies are only python3 (curl optional fallback)".
+**Scope guardrail:** This is a refactor of the script layer, not the skill workflow. SKILL.md's 5-step workflow stays the same; only the commands in Steps 2–4 change from `bash ./bin/hkdata-*.sh` to `python3 ./scripts/hkdata.py <subcommand>` (with bash wrappers preserving old syntax in `scripts/`). AGENTS.md's "Dependencies are only curl + python3" becomes "Dependencies are only python3 (curl optional fallback)".
 
 **Do alongside T20** (folder structure alignment) — the Python migration is the natural moment to rename `bin/` → `scripts/` and move logs out of the root, since every path reference in SKILL.md and AGENTS.md will be updated anyway.
 
@@ -531,7 +535,7 @@ The agent-skills spec doesn't define a logs directory because most skills are st
 |----------|-------|-------|
 | P0 | 2 | Script bugs (URL encoding, stdout pollution) — subsumed by T19 |
 | P1 | 12 | Python migration (T19) + folder structure (T20) + batch support (T21) + capability gaps (XML/CSV, joins, proxies, temporality) + portability (subagent syntax, task lists) + scalability (search index, SKILL.md extraction, structured logs) |
-| P2 | 7 | Robustness (User-Agent, broken endpoints, indexing gaps, normalization, checklist enforcement, template, index sync) |
+| P2 | 7 | Robustness (User-Agent T9*, broken endpoints, indexing gaps, normalization T12*, checklist enforcement, template, index sync) — *T9 and T12 subsumed by T19 |
 | **Total** | **21** | |
 
-Suggested order: **T19 + T20 + T21 together** (Python migration + folder structure + batch support — do as one refactor since batch support is trivial to implement during the Python CLI design), then T16 + T17 (scalability on the new Python base + SKILL.md extraction), then T4 + T5 + T6 (capability gaps now that parsing is solid), then T7 + T8 (portability + task tracking), then T18 (structured logs on the new `logs.py` module + `logs/` directory), then the remaining P2 items.
+Suggested order: **T19 + T20 + T21 together** (Python migration + folder structure + batch support — do as one refactor since batch support is trivial to implement during the Python CLI design), then **T18** (structured logs — needed by T16 point 5 before the search index can include experience history), then T16 + T17 (scalability on the new Python base + SKILL.md extraction), then T4 + T5 + T6 (capability gaps now that parsing is solid), then T7 + T8 (portability + task tracking), then the remaining P2 items (T9* and T12* are subsumed by T19).
