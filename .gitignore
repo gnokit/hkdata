@@ -15,6 +15,7 @@ __pycache__/
 
 # Local scratch / caches
 .cache/
+.pytest_cache/
 tmp/
 *.log
 

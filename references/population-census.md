@@ -50,12 +50,17 @@ Each record contains:
 
 **Total Hong Kong Population:** 7,523,000 (mid-2024)
 
+## Related Datasets
+
+- `hk-censtatd-tablechart-110-06811` — Population by District Council district, sex and age (broad age groups: 0-14, 15-24, etc.). Useful as a denominator for district-level per-capita calculations.
+
 ## Notes
 
 - Population figures are mid-year estimates
 - Data available from 2002 to present
 - District boundaries changed in 2016 (Wan Chai and Eastern districts)
 - Excludes marine population and reservoir areas
+- Table `110-06811` only provides broad age groups; single-year age (e.g., 5-year-olds) is not available on data.gov.hk
 
 ---
 

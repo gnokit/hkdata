@@ -14,6 +14,40 @@
 
 ## 成功策略記錄
 
+
+### Education
+
+| Topic | 嘗試方法 | 結果 |
+|-------|---------|------|
+| primary school places / enrolment by district | Web search: site:data.gov.hk primary school places district EDB → tab0307_en.csv + 110-06811 JSON API | ✅ Found EDB enrolment by district and Censtatd population by district/age group; exact 5-year-old and district-level places unavailable, use proxies |
+
+### Law and Security
+
+| Topic | 嘗試方法 | 結果 |
+|-------|---------|------|
+| crime / violent crime | Web search: site:data.gov.hk crime police → inspect hk-hkpf-stat-crm-stat-detail → test CSV endpoints | ✅ Found HKPF crime CSVs; district-level data NOT available on data.gov.hk |
+
+### Tourism
+
+| Topic | 嘗試方法 | 結果 |
+|-------|---------|------|
+| visitor arrivals / hotel occupancy | Web search: site:data.gov.hk hotel occupancy rate Hong Kong monthly → inspect hk-cstb-cstb_tc-tc-hotel-room-occupancy-rate + hk-censtatd-tablechart-650-80001 | ✅ Visitor arrivals JSON API and hotel occupancy CSV both live; latest month lags by ~1–2 months |
+
+### 交通 — 渡輪 (Transport — Ferry)
+
+| Topic | 嘗試方法 | 結果 |
+|-------|---------|------|
+| Star Ferry | `hkdata-find.sh "ferry"` | ✅ 找到 Star Ferry dataset |
+| TD licensed ferry | `hkdata-find.sh "ferry"` | ❌ 同上結果，但 TD dataset 唔被索引 |
+| TD licensed ferry | `hkdata-find.sh "pier"` | ❌ 0 相關結果 |
+| TD licensed ferry | `hkdata-find.sh "outlying"` | ❌ 0 相關結果 |
+| Sun Ferry ETA | `hkdata-find.sh "ETA"` | ❌ 0 results |
+| 全部渡輪 dataset | Web search: `site:data.gov.hk ferry timetable Cheung Chau outlying island Central pier` | ✅ 找到 TD + Sun Ferry + HKKF |
+| TD Central→Cheung Chau timetable | `curl ferry_central_cc_timetable_eng.csv` | ✅ CSV，165 行，UTF-8 BOM |
+| Sun Ferry ETA (Central→Cheung Chau) | `curl -L sunferry.com.hk/eta/?route=CECC` | ✅ JSON，2 個班次（當前+下一班），含 GPS |
+| HKKF routes | `curl -L hkkfeta.com/opendata/route/` | ✅ JSON（需要 trailing slash） |
+| HKKF pier | `curl -L hkkfeta.com/opendata/pier/` | ⚠️ 422 Incorrect Parameter（需要額外參數） |
+
 ### 休閒設施 (Recreation & Sports)
 
 | Topic | 嘗試方法 | 結果 |
@@ -24,21 +58,6 @@
 | badminton | `hkdata-find.sh "facility"` | ❌ 0 results |
 | badminton | Web search: `site:data.gov.hk badminton lcsd` | ✅ 找到 2 個 datasets |
 | badminton | 直接用已知 ID 測試 | ✅ 成功 |
-
-### 航運與港口 (Shipping & Port)
-
-| Topic | 嘗試方法 | 結果 |
-|-------|---------|------|
-| port cargo throughput | `hkdata-find.sh "port"` | ✅ 找到 Censtatd 410-55110 等 |
-| port cargo throughput | `hkdata-find.sh "cargo"` | ✅ 找到 14 個 datasets |
-| container throughput | `hkdata-find.sh "container"` | ✅ 找到 410-55290 等 |
-| vessel arrivals | `hkdata-find.sh "vessel"` | ❌ 0 results |
-| vessel arrivals | `hkdata-find.sh "arrival"` | ❌ 只返回訪客/航空 |
-| vessel arrivals | `hkdata-find.sh "ship"` | ❌ 只返回 Censtatd 貨運 |
-| vessel arrivals | Web search: `site:data.gov.hk vessel arrival port call Hong Kong marine department` | ✅ 找到 `hk-md-mardep-vessel-arrivals-and-departures` |
-| Censtatd 報告 CSV 下載 | `curl wbr.html?download_csv=1` | ❌ 返回 HTML，非 CSV |
-| Censtatd 表格 JSON API | `api/get.php?id=410-55110` | ✅ JSON API 正常 |
-| Marine Dept XML feed | `curl RP05005i.XML` + ElementTree 解析 | ✅ XML 正常，78 筆記錄 |
 
 ### 就業與勞動力 (Employment & Labour)
 
@@ -62,19 +81,6 @@
 | PRH estate by district | API 回傳 `District_Name` 欄位 | ✅ 可按區計數 |
 | 區名 join | Housing Authority 用 `&`，Censtatd 用 `and` | ⚠️ 需要標準化（replace `&` → `and`） |
 
-### 社會福利與長者服務 (Social Welfare & Elderly)
-
-| Topic | 嘗試方法 | 結果 |
-|-------|---------|------|
-| elderly services | `hkdata-find.sh "elderly"` | ✅ 找到 3 個 Censtatd 表 (935-88004/5/6) |
-| elderly services | `hkdata-find.sh "welfare"` | ✅ 找到同上 + 社會保障表 |
-| elderly services | `hkdata-find.sh "長者"` | ❌ crash (無 URL encoding) |
-| elderly services | `curl ...q=%E9%95%B7%E8%80%85...` (手動 encode) | ❌ 0 results (中文索引不全) |
-| elderly centres | `hkdata-find.sh "centre"` | ❌ 只返回家庭服務中心、幼兒中心 |
-| elderly centres | Web search: `site:data.gov.hk elderly centre social welfare department` | ✅ 找到 4 個 SWD dataset |
-| SWD CSV parse | `curl + utf-16-le decode + tab delimiter` | ✅ NEC 172 + DE/DCU 96 + STE 64 |
-| Censtatd 服務統計 | `api/get.php?id=935-88005` | ✅ JSON API，但係受助人數唔係中心數 |
-
 ### 環境與空氣質素 (Environment & Air Quality)
 
 | Topic | 嘗試方法 | 結果 |
@@ -88,28 +94,42 @@
 | PM2.5 by station (XML) | `curl 24pc_Eng.xml` + ElementTree | ✅ 24h hourly data，PM2.5=7.8 µg/m³ |
 | AQHI (City Dashboard JSON) | `curl dashboard.data.gov.hk/api/aqhi-individual?format=json` | ✅ JSON array，18 站（比 RSS 慢 ~1h） |
 
-### 交通 — 渡輪 (Transport — Ferry)
+### 社會福利與長者服務 (Social Welfare & Elderly)
 
 | Topic | 嘗試方法 | 結果 |
 |-------|---------|------|
-| Star Ferry | `hkdata-find.sh "ferry"` | ✅ 找到 Star Ferry dataset |
-| TD licensed ferry | `hkdata-find.sh "ferry"` | ❌ 同上結果，但 TD dataset 唔被索引 |
-| TD licensed ferry | `hkdata-find.sh "pier"` | ❌ 0 相關結果 |
-| TD licensed ferry | `hkdata-find.sh "outlying"` | ❌ 0 相關結果 |
-| Sun Ferry ETA | `hkdata-find.sh "ETA"` | ❌ 0 results |
-| 全部渡輪 dataset | Web search: `site:data.gov.hk ferry timetable Cheung Chau outlying island Central pier` | ✅ 找到 TD + Sun Ferry + HKKF |
-| TD Central→Cheung Chau timetable | `curl ferry_central_cc_timetable_eng.csv` | ✅ CSV，165 行，UTF-8 BOM |
-| Sun Ferry ETA (Central→Cheung Chau) | `curl -L sunferry.com.hk/eta/?route=CECC` | ✅ JSON，2 個班次（當前+下一班），含 GPS |
-| HKKF routes | `curl -L hkkfeta.com/opendata/route/` | ✅ JSON（需要 trailing slash） |
-| HKKF pier | `curl -L hkkfeta.com/opendata/pier/` | ⚠️ 422 Incorrect Parameter（需要額外參數） |
+| elderly services | `hkdata-find.sh "elderly"` | ✅ 找到 3 個 Censtatd 表 (935-88004/5/6) |
+| elderly services | `hkdata-find.sh "welfare"` | ✅ 找到同上 + 社會保障表 |
+| elderly services | `hkdata-find.sh "長者"` | ❌ crash (無 URL encoding) |
+| elderly services | `curl ...q=%E9%95%B7%E8%80%85...` (手動 encode) | ❌ 0 results (中文索引不全) |
+| elderly centres | `hkdata-find.sh "centre"` | ❌ 只返回家庭服務中心、幼兒中心 |
+| elderly centres | Web search: `site:data.gov.hk elderly centre social welfare department` | ✅ 找到 4 個 SWD dataset |
+| SWD CSV parse | `curl + utf-16-le decode + tab delimiter` | ✅ NEC 172 + DE/DCU 96 + STE 64 |
+| Censtatd 服務統計 | `api/get.php?id=935-88005` | ✅ JSON API，但係受助人數唔係中心數 |
+
+### 航運與港口 (Shipping & Port)
+
+| Topic | 嘗試方法 | 結果 |
+|-------|---------|------|
+| port cargo throughput | `hkdata-find.sh "port"` | ✅ 找到 Censtatd 410-55110 等 |
+| port cargo throughput | `hkdata-find.sh "cargo"` | ✅ 找到 14 個 datasets |
+| container throughput | `hkdata-find.sh "container"` | ✅ 找到 410-55290 等 |
+| vessel arrivals | `hkdata-find.sh "vessel"` | ❌ 0 results |
+| vessel arrivals | `hkdata-find.sh "arrival"` | ❌ 只返回訪客/航空 |
+| vessel arrivals | `hkdata-find.sh "ship"` | ❌ 只返回 Censtatd 貨運 |
+| vessel arrivals | Web search: `site:data.gov.hk vessel arrival port call Hong Kong marine department` | ✅ 找到 `hk-md-mardep-vessel-arrivals-and-departures` |
+| Censtatd 報告 CSV 下載 | `curl wbr.html?download_csv=1` | ❌ 返回 HTML，非 CSV |
+| Censtatd 表格 JSON API | `api/get.php?id=410-55110` | ✅ JSON API 正常 |
+| Marine Dept XML feed | `curl RP05005i.XML` + ElementTree 解析 | ✅ XML 正常，78 筆記錄 |
 
 ### 通用模式
 
+| Topic | 嘗試方法 | 結果 |
+|-------|---------|------|
 | Pattern | 適用場景 | 備註 |
-|---------|---------|------|
 | `site:data.gov.hk <topic> lcsd` | 休閒設施、體育場地 | LCSD 管的設施常用 |
-| `site:data.gov.hk <topic> transport` | 交通相關 | |
-| `site:data.gov.hk <topic> census` | 人口統計 | |
+| `site:data.gov.hk <topic> transport` | 交通相關 |  |
+| `site:data.gov.hk <topic> census` | 人口統計 |  |
 | `site:data.gov.hk <topic> marine department` | 船舶、港口、海事 | Marine Dept dataset 常用 |
 | `site:data.gov.hk <topic> "district council"` | 區議會分區數據 | Censtatd 068xx 系列表格 |
 | `site:data.gov.hk <topic> "social welfare department"` | 長者服務、社福中心 | SWD dataset 常用 |
@@ -127,7 +147,5 @@
 | 單字關鍵字搜尋 | 多字關鍵字 | ⚠️ `hkdata-find.sh` 不支援空格，用單字或 web search 代替 |
 | 中文關鍵字搜尋 | 中文 topic | ❌ `hkdata-find.sh` 無 URL encoding + CKAN 中文索引不全；改用英文同義詞 |
 
----
 
 <!-- 新記錄請加喺上面 -->
-

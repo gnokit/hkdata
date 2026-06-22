@@ -18,17 +18,18 @@
 
 ## 記錄
 
+
 ### 2026-03-18 | Task: 羽毛球場地搜尋
 
 **失敗組件:** `hkdata-find.sh` (CKAN package_search API)
 
-**錯誤現象:** 
+**錯誤現象:**
 - 搜尋 `badminton`, `sport`, `court`, `facility`, `recreation`, `venue`, `leisure`, `court`, `gymnasium`, `ball`, `indoor`, `outdoor`, `booking` 等 14 個關鍵字全部返回 0 結果
 - Script 本身無報錯，但 CKAN metadata indexing 有問題
 
 **根本原因:** data.gov.hk 的 CKAN `package_search` API 對部分 dataset 嘅 metadata 索引不完整，特别是 LCSD 設施類 dataset
 
-**解決方案:** 
+**解決方案:**
 1. 用 web search 搜尋 `site:data.gov.hk badminton lcsd facility`
 2. 直接搵到 dataset IDs: `hk-lcsd-facility-facility-bmtc` 和 `hk-lcsd-facility-facility-bmtcvenue`
 3. 用 `package_show` API 檢查 dataset metadata
@@ -42,14 +43,14 @@
 
 **失敗組件:** `hkdata-find.sh` (CKAN package_search API)
 
-**錯誤現象:** 
+**錯誤現象:**
 - 搜尋 `vessel` 返回 0 結果
 - 搜尋 `arrival` 只返回訪客/航空旅客統計，無船舶到港數據
 - 搜尋 `ship` 只返回 Censtatd 貨運吞吐量統計，無船舶計數
 
 **根本原因:** data.gov.hk CKAN `package_search` 對 Marine Department 嘅 vessel arrivals dataset 嘅 metadata 索引不完整，關鍵字 `vessel` / `arrival` / `ship` 都搵唔到 `hk-md-mardep-vessel-arrivals-and-departures`
 
-**解決方案:** 
+**解決方案:**
 1. 用 web search 搜尋 `site:data.gov.hk vessel arrival port call Hong Kong marine department`
 2. 直接搵到 dataset ID: `hk-md-mardep-vessel-arrivals-and-departures`
 3. 用 `package_show` API 取得 XML endpoint URLs
@@ -63,13 +64,13 @@
 
 **失敗組件:** Censtatd `wbr.html` CSV 下載端點
 
-**錯誤現象:** 
+**錯誤現象:**
 - Dataset `hk-censtatd-tablechart-b1020008` (Hong Kong Shipping Statistics Report) 嘅 CSV 資源 URL `https://www.censtatd.gov.hk/en/wbr.html?ecode=B10200082026QQ01&download_csv=1` 返回 HTML 頁面（JavaScript 渲染嘅網頁報告），唔係實際 CSV 數據
 - `curl -s -L` 跟隨重定向後仍然係 HTML，唔係 CSV
 
 **根本原因:** Censtatd 嘅 `wbr.html` 係一個網頁報告查看器，`download_csv=1` 參數係由 JavaScript 觸發嘅客戶端動作，唔係伺服器端直接文件下載。程式化存取無法取得 CSV。
 
-**解決方案:** 
+**解決方案:**
 - 改用同類嘅 Censtatd JSON API（`api/get.php?id=410-55110`）取得貨運吞吐量數據
 - 船舶計數方面，改用 Marine Department 嘅實時 XML feed（`RP05005i.XML`）
 - 歷史月度船舶到港計數目前無可用嘅程式化 API
@@ -82,18 +83,18 @@
 
 **失敗組件:** `hkdata-find.sh` (CKAN package_search API)
 
-**錯誤現象:** 
+**錯誤現象:**
 - 搜尋 `unemployment` 返回 72 個結果，全部按年齡/性別/教育/行業/職業劃分，無按區議會分區劃分
 - 搜尋 `district` 只返回 3 個結果（地產、藥物、土地註冊），無勞動力數據
 - 搜尋 `unemployment district` / `labour force district` / `employment district` / `public housing` 全部因為多字關鍵字含空格而 crash（URL encoding bug）
 - 探測 table ID 210-06820 至 210-06840 全部返回 Fail
 
-**根本原因:** 
+**根本原因:**
 1. data.gov.hk CKAN `package_search` 對多字關鍵字無 URL encoding，空格導致 API 請求失敗
 2. Censtatd 嘅 General Household Survey 樣本太小，不支持區議會分區級別嘅失業率估計
 3. 區議會分區級別只提供勞動力（LF）同勞動力參與率（LFPR），唔提供失業率（UR）
 
-**解決方案:** 
+**解決方案:**
 1. 用單字關鍵字搜尋（`unemployment` 而唔係 `unemployment district`）
 2. 用 web search 搜尋 `site:data.gov.hk "unemployment" "district council" censtatd` 搵到 `210-06821`（LFPR by district）
 3. 用 Censtatd API `api/get.php?id=210-06821` 取得 LFPR 數據
@@ -107,13 +108,13 @@
 
 **失敗組件:** `hkdata-find.sh`
 
-**錯誤現象:** 
+**錯誤現象:**
 - 搜尋含空格嘅關鍵字（如 `unemployment district`, `public housing`, `labour force district`）全部 crash，報 `json.decoder.JSONDecodeError: Expecting value`
 - 因為 CKAN API 返回非 JSON 響應（空內容或錯誤頁面）
 
 **根本原因:** `hkdata-find.sh` 第 44 行 `q=${KEYWORD}` 無做 URL encoding，空格直接放入 URL 導致 API 請求失敗
 
-**解決方案:** 
+**解決方案:**
 - 暫時改用單字關鍵字搜尋
 - 永久修復：喺 `hkdata-find.sh` 中加入 URL encoding（如 `python3 -c "import urllib.parse; print(urllib.parse.quote('${KEYWORD}'))"` 或 bash `sed` 替換空格為 `%20`）
 
@@ -125,16 +126,16 @@
 
 **失敗組件:** `hkdata-find.sh` (CKAN package_search API)
 
-**錯誤現象:** 
+**錯誤現象:**
 - 搜尋 `長者` 直接 crash（`json.decoder.JSONDecodeError`），因為腳本無 URL encoding
 - 手動 URL encode 後搜尋 `%E9%95%B7%E8%80%85`（長者）→ 0 results
 - 手動 URL encode 後搜尋 `%E8%80%81%E4%BA%BA`（老人）→ 0 results
 
-**根本原因:** 
+**根本原因:**
 1. `hkdata-find.sh` 無 URL encoding，非 ASCII 字元直接放入 URL 导致 400 Bad Request
 2. data.gov.hk CKAN `package_search` 對中文關鍵字嘅 metadata 索引不完整，即使正確 URL encode 亦返回 0 結果
 
-**解決方案:** 
+**解決方案:**
 1. 用英文關鍵字 `elderly` 搜尋 → 成功搵到 3 個 Censtatd 統計表
 2. 用 web search `site:data.gov.hk elderly centre social welfare department` → 搵到 4 個 SWD 中心名單 dataset
 3. 中文關鍵字暫時唔可靠 — 必須用英文同義詞或 web search fallback
@@ -147,7 +148,7 @@
 
 **失敗組件:** SWD CSV 下載端點
 
-**錯誤現象:** 
+**錯誤現象:**
 - 4 個 SWD 長者中心 CSV 檔案全部用 UTF-16-LE 編碼（BOM `FF FE`），非 UTF-8
 - 副檔名係 `.csv` 但實際用 tab 分隔，唔係 comma
 - DE/DCU CSV 開頭有標題行同備註行，實際數據由第 3 行開始
@@ -155,7 +156,7 @@
 
 **根本原因:** SWD 用 Excel 匯出格式（UTF-16-LE + tab），唔係標準 CSV
 
-**解決方案:** 
+**解決方案:**
 1. 讀取 raw bytes，detect BOM → `utf-16-le` decode
 2. Strip BOM character (`\ufeff`)
 3. 用 `delimiter='\t'` parse
@@ -169,7 +170,7 @@
 
 **失敗組件:** `hkdata-find.sh` (CKAN package_search API)
 
-**錯誤現象:** 
+**錯誤現象:**
 - 搜尋 `AQHI` → 0 results
 - 搜尋 `pollution` → 0 results
 - 搜尋 `air quality` → crash（多字關鍵字 URL encoding bug）
@@ -177,7 +178,7 @@
 
 **根本原因:** data.gov.hk CKAN `package_search` 對 EPD airteam 嘅 AQHI dataset 嘅 metadata 索引不完整，關鍵字 `AQHI` / `pollution` / `air quality` 都搵唔到
 
-**解決方案:** 
+**解決方案:**
 1. 用 web search 搜尋 `site:data.gov.hk AQHI air quality health index EPD monitoring station Hong Kong`
 2. 搵到 4 個相關 dataset：
    - `hk-epd-airteam-current-aqhi-of-individual-air-quality-monitoring-stations` (RSS)
@@ -188,15 +189,13 @@
 
 **驗證:** ✅ 全部 4 個 endpoint 正常返回數據。AQHI=2 (Low)，PM2.5=7.8 µg/m³ for Causeway Bay
 
-**備註:** 此問題原本預期可能遇到「broken endpoint」情況，但實際全部 endpoint 都正常。EPD air quality API 嘅穩定性比預期好。
-
 ---
 
 ### 2026-06-22 | Task: 離島渡輪航線搜尋
 
 **失敗組件:** `hkdata-find.sh` (CKAN package_search API)
 
-**錯誤現象:** 
+**錯誤現象:**
 - 搜尋 `ferry` → 只找到 Star Ferry（天星小輪），搵唔到 Transport Department 嘅持牌渡輪服務、Sun Ferry ETA、HKKF ETA
 - 搜尋 `pier` → 0 相關結果
 - 搜尋 `harbour` → 0 相關結果
@@ -205,7 +204,7 @@
 
 **根本原因:** data.gov.hk CKAN `package_search` 對渡輪類 dataset 嘅索引不完整。Star Ferry 被索引（因為 dataset name 含 "ferry"），但 TD licensed ferry（dataset name `hk-td-wcms_8-ferry-services-tt-ft` 不含 "ferry" keyword in indexed metadata）、Sun Ferry ETA、HKKF ETA 都唔被索引
 
-**解決方案:** 
+**解決方案:**
 1. 用 web search `site:data.gov.hk ferry timetable Cheung Chau outlying island Central pier`
 2. 搵到 TD licensed ferry dataset + Sun Ferry ETA + HKKF ETA 共 3 個 dataset
 3. 用 `package_show` 取得 endpoint URLs
@@ -219,13 +218,13 @@
 
 **失敗組件:** HKKF ETA API (`www.hkkfeta.com`)
 
-**錯誤現象:** 
+**錯誤現象:**
 - `curl https://www.hkkfeta.com/opendata/pier` 返回空內容（HTTP 301 redirect）
 - `curl https://www.hkkfeta.com/opendata/route` 同樣返回空內容
 
 **根本原因:** HKKF API 所有 endpoint 需要 trailing slash（`/opendata/route/` 而唔係 `/opendata/route`）。無 trailing slash 會返回 301 redirect 到加咗 slash 嘅 URL，但 redirect 響應 body 係空嘅
 
-**解決方案:** 
+**解決方案:**
 - 所有 HKKF API call 必須加 `-L` flag（跟隨 redirect）或者直接喺 URL 加 trailing slash
 - `curl -s -L "https://www.hkkfeta.com/opendata/route/"` → 正常返回 JSON
 
@@ -233,5 +232,67 @@
 
 ---
 
-<!-- 新記錄請加喺上面 -->
+### 2026-06-22 | Task: District-level violent crime trend by district
 
+**失敗組件:** hkdata.py search + HKPF crime datasets
+
+**錯誤現象:**
+- Search "crime" returns 0 CKAN results
+- Search "violent crime" returns 0 results
+- Available HKPF datasets (hk-hkpf-stat-crm-stat-detail) only provide territory-wide data, no District Council district breakdown
+
+**根本原因:** data.gov.hk CKAN package_search does not index "crime" or "violent crime" keywords. Hong Kong Police Force does not publish District Council district-level violent crime statistics on data.gov.hk.
+
+**解決方案:**
+1. Use web search fallback: site:data.gov.hk crime police to find hk-hkpf-stat-crm-stat-detail
+2. Use HKPF CSV endpoints for territory-wide trends
+3. Report honestly that district-level data is unavailable; use territory-wide proxy with explicit caveat
+
+**驗證:** ✅ Found hk-hkpf-stat-crm-stat-detail; confirmed territory-wide only; documented in security-crime-hkpf.md
+
+---
+
+### 2026-06-22 | Task: Primary school places per 5-year-old child by district
+
+**失敗組件:** hkdata.py search + EDB/Censtatd datasets
+
+**錯誤現象:**
+- "primary school" / "kindergarten" / "education" searches return unrelated datasets or require web search fallback
+- Exact metric "5-year-old population by district" does not exist on data.gov.hk
+- Closest population denominator is 0-14 age group by district (Censtatd 110-06811)
+
+**根本原因:** EDB publishes primary school enrolment by district and grade, but not capacity/places by district. Censtatd publishes population by district and broad age group, but not single-year age.
+
+**解決方案:**
+1. Use web search fallback to find EDB tab0307 (enrolment by district and grade) and Censtatd 110-06811 (population by district and age group)
+2. Use P1 enrolment as proxy for P1 places and 0-14 population as proxy for child population
+3. Normalize district names (& vs and) before joining
+4. State both proxies explicitly in the answer
+
+**驗證:** ✅ Computed P1-enrolment-to-0-14-population ratio by district; Wan Chai highest; documented datasets
+
+---
+
+### 2026-06-22 | Task: Mainland visitor arrivals and hotel occupancy rate for last month
+
+**失敗組件:** hkdata.py search + Censtatd/CSTB datasets
+
+**錯誤現象:**
+- CKAN search for "hotel" returns unrelated traffic-snapshot dataset
+- "tourism" returns resident departures, not arrivals or hotel occupancy
+- Latest available data is April 2026, not May 2026 (data lag)
+
+**根本原因:** Hotel occupancy dataset (CSTB) is not indexed by CKAN for "hotel" / "occupancy" keywords. Visitor arrivals dataset is indexed only for "visitor arrivals". Both datasets have a short publication lag.
+
+**解決方案:**
+1. Use web search fallback: site:data.gov.hk hotel occupancy rate Hong Kong monthly
+2. Use Censtatd JSON API for visitor arrivals (650-80001)
+3. Use CSTB CSV for hotel occupancy rate
+4. Report the latest available month and state the data lag
+
+**驗證:** ✅ Retrieved April 2026 Mainland arrivals (3,104,167) and hotel occupancy (85%); documented datasets
+
+---
+
+
+<!-- 新記錄請加喺上面 -->

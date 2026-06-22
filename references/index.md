@@ -18,12 +18,14 @@ Master index of all verified Hong Kong open data APIs.
 | Badminton Courts (Free Outdoor) | recreation | Free outdoor badminton court locations (14 venues) | [recreation-badminton-outdoor.md](recreation-badminton-outdoor.md) |
 | Badminton Court Sessions | recreation | Real-time session availability across 105 LCSD venues (5-min updates) | [recreation-badminton-sessions.md](recreation-badminton-sessions.md) |
 | School Statistics | education | Number of schools by type/sector and region (2024: 590 primary schools) | [education-schools.md](education-schools.md) |
+| Primary School Enrolment | education | Primary school enrolment by district and grade; territory-wide accommodation | [education-primary-enrolment.md](education-primary-enrolment.md) |
 | Public Holidays | city | Hong Kong public holidays 2024-2026 (official 1823 data) | [city-holidays.md](city-holidays.md) |
 | PRH Income & Asset Limits | housing | Monthly income/asset limits for public rental housing application | [housing-prh.md](housing-prh.md) |
 | River Water Quality | environment | Recent DO and BOD5 data at downstream river monitoring stations | [environment-river-water.md](environment-river-water.md) |
 | Monthly Transport Digest | transport | Monthly CSV stats: passenger journeys, accidents, tunnel flows, licences | [transport-digest.md](transport-digest.md) |
 | Government Car Parks | city | Government car parks open for public use: locations, spaces, fees | [city-parking.md](city-parking.md) |
-| Crime Statistics | security | Persons arrested for crime by offence type, age group and sex | [security-crime.md](security-crime.md) |
+| Crime Statistics (Persons Arrested) | security | Persons arrested for crime by offence type, age group and sex (Censtatd) | [security-crime.md](security-crime.md) |
+| HKPF Crime Statistics in Detail | security | Territory-wide overall and violent crime CSVs from HKPF (no district breakdown) | [security-crime-hkpf.md](security-crime-hkpf.md) |
 | Cinemas | recreation | HK cinema inventory: locations, screens, seats, coordinates | [recreation-cinema.md](recreation-cinema.md) |
 | Film Development Fund | recreation | Approved FDF film projects since 2009: titles, funding, dates | [recreation-film-fund.md](recreation-film-fund.md) |
 | Film Box Office (FDF) | recreation | HK box office revenue for FDF-funded films | [recreation-film-boxoffice.md](recreation-film-boxoffice.md) |
@@ -35,6 +37,8 @@ Master index of all verified Hong Kong open data APIs.
 | Elderly Service Statistics | welfare | Annual recipient counts for community support, community care, residential care (2024) | [welfare-elderly-services.md](welfare-elderly-services.md) |
 | Air Quality (AQHI + Pollutants) | environment | Real-time AQHI + PM2.5/PM10/NO2/SO2/O3/CO at 18 stations (EPD RSS/XML + DPO JSON, hourly) | [environment-air-quality.md](environment-air-quality.md) |
 | Ferry Services (Timetables + ETA) | transport | Static timetables (TD, all routes) + real-time ETA (Sun Ferry, HKKF — 1-min, vessel GPS) | [transport-ferry.md](transport-ferry.md) |
+| Visitor Arrivals | tourism | Monthly visitor arrivals by nationality/region (e.g., Chinese Mainland) | [tourism-arrivals.md](tourism-arrivals.md) |
+| Hotel Room Occupancy Rate | tourism | Monthly hotel room occupancy rate (%) | [tourism-hotel-occupancy.md](tourism-hotel-occupancy.md) |
 
 ## By Category
 
@@ -45,6 +49,10 @@ Master index of all verified Hong Kong open data APIs.
 - [transport-port-cargo.md](transport-port-cargo.md) - Port cargo throughput (quarterly, JSON API)
 - [transport-vessel-arrivals.md](transport-vessel-arrivals.md) - Real-time vessel arrivals/departures (XML)
 - [transport-ferry.md](transport-ferry.md) - Ferry timetables (TD static) + real-time ETA (Sun Ferry, HKKF)
+
+### Tourism
+- [tourism-arrivals.md](tourism-arrivals.md) - Monthly visitor arrivals by nationality/region
+- [tourism-hotel-occupancy.md](tourism-hotel-occupancy.md) - Monthly hotel room occupancy rate (%)
 
 ### Weather
 - [weather-sunrise.md](weather-sunrise.md) - Sunrise/sunset times
@@ -63,6 +71,7 @@ Master index of all verified Hong Kong open data APIs.
 
 ### Education
 - [education-schools.md](education-schools.md) - Number of schools by type/sector and region
+- [education-primary-enrolment.md](education-primary-enrolment.md) - Primary school enrolment by district and grade
 
 ### City Management and Utilities
 - [city-holidays.md](city-holidays.md) - Hong Kong public holidays (2024-2026)
@@ -81,7 +90,8 @@ Master index of all verified Hong Kong open data APIs.
 - [environment-air-quality.md](environment-air-quality.md) - Real-time AQHI + pollutant concentration at 18 stations
 
 ### Law and Security
-- [security-crime.md](security-crime.md) - Crime statistics by offence type, age and sex
+- [security-crime.md](security-crime.md) - Crime statistics by offence type, age and sex (Censtatd)
+- [security-crime-hkpf.md](security-crime-hkpf.md) - HKPF territory-wide overall and violent crime CSVs
 
 ### Recreation & Culture
 - [recreation-badminton-outdoor.md](recreation-badminton-outdoor.md) - Free outdoor badminton court locations
@@ -97,12 +107,15 @@ Master index of all verified Hong Kong open data APIs.
 ## Finding New Datasets
 
 1. Use discovery workflow in [SKILL.md](../SKILL.md)
-2. Search: `bash ./bin/hkdata-find.sh "keyword"`
-3. Inspect: `bash ./bin/hkdata-info.sh "dataset-id"`
+2. Search: `bash ./scripts/hkdata-find.sh "keyword"`
+3. Inspect: `bash ./scripts/hkdata-info.sh "dataset-id"`
+
+> **Maintenance note:** Keep the `Verified Datasets` table and the `By Category` section in sync. When adding a dataset, update **both**.
 
 ## Adding New Datasets
 
 1. Copy [template.md](template.md)
 2. Rename to `{category}-{dataset}.md`
-3. Update this index
-4. Update SKILL.md category table
+3. Update this index (`Verified Datasets` table **and** `By Category` section)
+4. Run `python3 ./scripts/hkdata.py reindex` to rebuild `search-index.json`
+5. If fallback was used, append to `logs/failure-log.jsonl` and `logs/strategy-registry.jsonl`, then run `python3 ./scripts/hkdata.py log-render`

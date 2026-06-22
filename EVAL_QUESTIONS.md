@@ -118,6 +118,84 @@ Five complex questions used to stress-test the hkdata skill. Each probes unteste
 | Q5 | Next ferry Central→Cheung Chau | 4 | 1 | 2 | Real-time ETA available; operator mapping non-obvious |
 | **Total** | | **19** | **8** | **11** | |
 
+---
+
+## Q6 — Crime trend by district (security + time-series)
+
+> "Which Hong Kong district saw the largest year-on-year percentage increase in reported violent crimes in the most recent full year, and what was the change?"
+
+**Untested axes probed:**
+- Security category (`law-and-security` → `security-` prefix)
+- HK Police crime statistics (likely CSV/XLSX, not JSON)
+- Year-on-year percentage change from a time-series table
+- District-level aggregation across offense types
+
+**Expected challenges:**
+- CKAN search for "crime" or "violent crime" may return 0 results or unrelated datasets
+- Data may be in Excel/CSV with multiple sheets requiring format detection
+- Need to identify "violent crime" row labels and sum across subcategories
+
+**Potential datasets:** HK Police crime statistics tables on data.gov.hk
+**Potential reference file:** `security-crime.md`
+**Potential failures logged:** "crime" / "violent crime" keyword indexing gaps; CSV/XLSX parsing quirks
+
+---
+
+## Q7 — School capacity vs child population (education + population cross-join)
+
+> "Which district has the most primary school places per 5-year-old child, and is it above or below the territory-wide average?"
+
+**Untested axes probed:**
+- Education category (`education-` prefix)
+- Cross-dataset join requiring 3 sources: school places by district, child population by district, district name normalization
+- Ratio calculation and territory-wide average
+- Age-band matching (5-year-olds vs primary school entry age)
+
+**Expected challenges:**
+- School data may list "number of schools" rather than "number of places"
+- Population data uses different district name variants (Censtatd vs Housing Authority)
+- May need proxy: "primary schools per child" if places are unavailable
+
+**Potential datasets:** Censtatd school statistics, Censtatd population by district/age
+**Potential reference files:** `education-schools.md` (update), `population-census.md` (update)
+**Potential failures logged:** school places metric not directly available; district name variants
+
+---
+
+## Q8 — Mainland tourism + hotel occupancy (tourism + commerce cross-dataset)
+
+> "How many Mainland Chinese visitors arrived in Hong Kong last month, and what was the average hotel occupancy rate for the same period?"
+
+**Untested axes probed:**
+- Tourism category (`tourism-` prefix)
+- Visitor arrivals by country/region filter
+- Hotel occupancy rate dataset (commerce/tourism boundary)
+- Temporal alignment of two datasets with different update schedules
+
+**Expected challenges:**
+- "Mainland China" may be labeled as "Mainland", "Chinese Mainland", "内地", or similar
+- Hotel occupancy data may be monthly/quarterly and lagged differently from arrivals
+- Cross-dataset answer requires both datasets to be live and aligned
+
+**Potential datasets:** Censtatd visitor arrivals, HKTB/C&SD hotel occupancy
+**Potential reference files:** `tourism-arrivals.md`, `commerce-hotel-occupancy.md`
+**Potential failures logged:** tourism keyword indexing gaps; Mainland China label ambiguity
+
+---
+
+## Summary (including Q6–Q8)
+
+| # | Question | Datasets found | Ref files | Failures logged | Key finding |
+|---|----------|---------------|-----------|-----------------|-------------|
+| Q1 | Port cargo + vessel counts | 2 | 2 | 2 | Non-JSON resources broken; CSV download returns HTML |
+| Q2 | District unemployment + PRH estates | 2 | 2 | 3 | UR by district doesn't exist; LFPR is proxy; multi-word crash |
+| Q3 | Elderly services + centres | 7 | 2 | 2 | Chinese keywords crash + not indexed; SWD CSVs are UTF-16-LE tab |
+| Q4 | Air quality at Causeway Bay | 4 | 1 | 2 | All endpoints live (better than expected); 4 formats in one domain |
+| Q5 | Next ferry Central→Cheung Chau | 4 | 1 | 2 | Real-time ETA available; operator mapping non-obvious |
+| Q6 | Crime trend by district | ? | ? | ? | Security category; CSV/XLSX time-series; district aggregation |
+| Q7 | School capacity vs child population | ? | ? | ? | Education + population join; ratio; age-band matching |
+| Q8 | Mainland tourism + hotel occupancy | ? | ? | ? | Tourism + commerce; regional filter; temporal alignment |
+
 **Cumulative impact on skill:**
 - Verified datasets: 21 → 32 (11 new)
 - Reference files: 24 → 32 (8 new)
