@@ -27,6 +27,14 @@ Master index of all verified Hong Kong open data APIs.
 | Cinemas | recreation | HK cinema inventory: locations, screens, seats, coordinates | [recreation-cinema.md](recreation-cinema.md) |
 | Film Development Fund | recreation | Approved FDF film projects since 2009: titles, funding, dates | [recreation-film-fund.md](recreation-film-fund.md) |
 | Film Box Office (FDF) | recreation | HK box office revenue for FDF-funded films | [recreation-film-boxoffice.md](recreation-film-boxoffice.md) |
+| Port Cargo Throughput | transport | Quarterly port cargo tonnage + YoY % change (Censtatd JSON API) | [transport-port-cargo.md](transport-port-cargo.md) |
+| Vessel Arrivals & Departures | transport | Real-time ocean-going vessel arrivals/departures (Marine Dept XML, 20-min) | [transport-vessel-arrivals.md](transport-vessel-arrivals.md) |
+| PRH Estates Inventory | housing | All HA public rental housing estates with district, coordinates, block counts (197 PRH estates) | [housing-estates.md](housing-estates.md) |
+| District-Level Labour Force | employment | Annual LF count and LFPR by District Council district (2025; NOT unemployment rate) | [employment-district-lf.md](employment-district-lf.md) |
+| Elderly Centres Inventory | welfare | SWD elderly centres: NEC (172), DE/DCU (96), STE (64) — CSV, UTF-16-LE tab-delimited | [welfare-elderly-centres.md](welfare-elderly-centres.md) |
+| Elderly Service Statistics | welfare | Annual recipient counts for community support, community care, residential care (2024) | [welfare-elderly-services.md](welfare-elderly-services.md) |
+| Air Quality (AQHI + Pollutants) | environment | Real-time AQHI + PM2.5/PM10/NO2/SO2/O3/CO at 18 stations (EPD RSS/XML + DPO JSON, hourly) | [environment-air-quality.md](environment-air-quality.md) |
+| Ferry Services (Timetables + ETA) | transport | Static timetables (TD, all routes) + real-time ETA (Sun Ferry, HKKF — 1-min, vessel GPS) | [transport-ferry.md](transport-ferry.md) |
 
 ## By Category
 
@@ -34,6 +42,9 @@ Master index of all verified Hong Kong open data APIs.
 - [transport-kmb.md](transport-kmb.md) - KMB/LWB bus ETA
 - [transport-mtr.md](transport-mtr.md) - MTR real-time train data
 - [transport-digest.md](transport-digest.md) - Monthly traffic and transport digest
+- [transport-port-cargo.md](transport-port-cargo.md) - Port cargo throughput (quarterly, JSON API)
+- [transport-vessel-arrivals.md](transport-vessel-arrivals.md) - Real-time vessel arrivals/departures (XML)
+- [transport-ferry.md](transport-ferry.md) - Ferry timetables (TD static) + real-time ETA (Sun Ferry, HKKF)
 
 ### Weather
 - [weather-sunrise.md](weather-sunrise.md) - Sunrise/sunset times
@@ -47,7 +58,7 @@ Master index of all verified Hong Kong open data APIs.
 
 ### Employment
 - [employment-unemployment.md](employment-unemployment.md) - Monthly unemployment rate by age and sex
-
+- [employment-district-lf.md](employment-district-lf.md) - Annual labour force and LFPR by district (NOT unemployment rate)
 
 
 ### Education
@@ -59,9 +70,15 @@ Master index of all verified Hong Kong open data APIs.
 
 ### Housing
 - [housing-prh.md](housing-prh.md) - Public Rental Housing income and asset limits
+- [housing-estates.md](housing-estates.md) - PRH estate inventory with district locations
+
+### Employment
+- [employment-unemployment.md](employment-unemployment.md) - Monthly unemployment rate by age and sex
+- [employment-district-lf.md](employment-district-lf.md) - Annual labour force and LFPR by district
 
 ### Environment
 - [environment-river-water.md](environment-river-water.md) - Recent river water quality data
+- [environment-air-quality.md](environment-air-quality.md) - Real-time AQHI + pollutant concentration at 18 stations
 
 ### Law and Security
 - [security-crime.md](security-crime.md) - Crime statistics by offence type, age and sex
@@ -72,6 +89,10 @@ Master index of all verified Hong Kong open data APIs.
 - [recreation-cinema.md](recreation-cinema.md) - Hong Kong cinema inventory
 - [recreation-film-fund.md](recreation-film-fund.md) - Film Development Fund approved projects
 - [recreation-film-boxoffice.md](recreation-film-boxoffice.md) - Box office for FDF-funded films
+
+### Social Welfare
+- [welfare-elderly-centres.md](welfare-elderly-centres.md) - SWD elderly centres inventory (NEC, DE/DCU, STE)
+- [welfare-elderly-services.md](welfare-elderly-services.md) - Elderly service recipient statistics (Censtatd)
 
 ## Finding New Datasets
 

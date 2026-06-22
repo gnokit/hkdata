@@ -208,6 +208,14 @@ cp ./references/template.md \
 | Cinemas | recreation | HK cinema inventory: locations, screens, seats, coordinates | [recreation-cinema.md](references/recreation-cinema.md) |
 | Film Development Fund | recreation | Approved FDF film projects since 2009: titles, funding, dates | [recreation-film-fund.md](references/recreation-film-fund.md) |
 | Film Box Office (FDF) | recreation | HK box office revenue for FDF-funded films | [recreation-film-boxoffice.md](references/recreation-film-boxoffice.md) |
+| Port Cargo Throughput | transport | Quarterly port cargo tonnage + YoY % change (2026 Q1: 42,048 '000 tonnes, +2.2%) | [transport-port-cargo.md](references/transport-port-cargo.md) |
+| Vessel Arrivals & Departures | transport | Real-time ocean-going vessel arrivals/departures (Marine Dept XML, 20-min updates) | [transport-vessel-arrivals.md](references/transport-vessel-arrivals.md) |
+| PRH Estates Inventory | housing | All HA public rental housing estates: district, coordinates, blocks (197 PRH estates) | [housing-estates.md](references/housing-estates.md) |
+| District-Level Labour Force | employment | Annual LF count and LFPR by DC district (2025; NOT unemployment rate) | [employment-district-lf.md](references/employment-district-lf.md) |
+| Elderly Centres Inventory | welfare | SWD elderly centres: NEC 172, DE/DCU 96, STE 64 (UTF-16-LE tab CSV) | [welfare-elderly-centres.md](references/welfare-elderly-centres.md) |
+| Elderly Service Statistics | welfare | Annual recipient counts: community support, care, residential (2024) | [welfare-elderly-services.md](references/welfare-elderly-services.md) |
+| Air Quality (AQHI + Pollutants) | environment | Real-time AQHI + PM2.5/PM10/NO2 at 18 stations (EPD RSS/XML + DPO JSON, hourly) | [environment-air-quality.md](references/environment-air-quality.md) |
+| Ferry Services (Timetables + ETA) | transport | Static timetables (TD all routes) + real-time ETA (Sun Ferry/HKKF, 1-min, vessel GPS) | [transport-ferry.md](references/transport-ferry.md) |
 
 ---
 
