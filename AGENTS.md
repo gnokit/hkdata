@@ -59,15 +59,16 @@ Otherwise fall back to:
    `bash ./hk.sh experience-log --kind negative …`
    then `bash ./hk.sh log-render`.
 
-## Step 5 (documentation) is mandatory, not optional
+## Step 5 is a memory write, not a documentation gate
 
-The canonical checklist is the **hard gate** in `SKILL.md`'s "Step 5" section. When a new dataset is discovered and verified, the repo-side specifics are:
+`SKILL.md`'s Step 5 records every discovery as an experience card (positive or
+negative) via `experience-log`, then `log-render`. The canonical hard gate is
+there; the repo-side specifics for **reference docs** apply only when the recipe
+is non-trivial (endpoint quirks, multi-endpoint joins, proxy logic):
 1. `cp ./references/template.md ./references/{category}-{dataset}.md` and fill it in.
 2. Add a row to the table in `references/index.md` AND an entry under the right `### Category` heading there.
-3. Run `bash ./hk.sh reindex` to rebuild `references/search-index.json`.
-4. If fallback was used, record an experience (`experience-log`) and run `bash ./hk.sh log-render`.
-
-State "Step 5 incomplete — documentation pending" explicitly if you cannot finish; do not silently skip it.
+3. Cite the doc via `--source` on `experience-log`, then run `bash ./hk.sh reindex`.
+4. One outcome → one card, and never both kinds for the same outcome.
 
 ## Category → filename prefix mapping (non-obvious ones)
 
@@ -96,7 +97,7 @@ Only Hong Kong government data from data.gov.hk. Non-HK data, non-government sou
 
 ## Subagent delegation
 
-For complex discovery, `SKILL.md` specifies spawning a **single** subagent with shell and file access to run Steps 2–5 end-to-end. Do not split into multiple subagents. Use the highest-reasoning model available in your agent tool. The requirements are in the "Subagent Configuration" section of `SKILL.md`; a worked example and response templates are in [`references/workflow-guides.md`](references/workflow-guides.md).
+For complex discovery you may spawn a **single** subagent with shell and file access to run Steps 2–5 end-to-end. Do not split into multiple subagents. Use the highest-reasoning model available in your agent tool. A worked example and response templates are in [`references/workflow-guides.md`](references/workflow-guides.md).
 
 ## Keeping SKILL.md minimal
 

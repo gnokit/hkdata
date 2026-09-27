@@ -151,6 +151,10 @@ Do not edit by hand; record an experience and run `hkdata.py log-render`.
 - **Datasets:** hk-hkpf-stat-crm-stat-detail
 - **Method:** Web search: site:data.gov.hk crime police → inspect hk-hkpf-stat-crm-stat-detail → test CSV endpoints
 - **Outcome:** ✅ Found HKPF crime CSVs; district-level data NOT available on data.gov.hk
+- **Caveats:** data.gov.hk CKAN package_search does not index "crime" or "violent crime" keywords. Hong Kong Police Force does not publish District Council district-level violent crime statistics on data.gov.hk.
+- **Details:** （較早記錄）District-level violent crime trend by district: 1. Use web search fallback: site:data.gov.hk crime police to find hk-hkpf-stat-crm-stat-detail
+2. Use HKPF CSV endpoints for territory-wide trends
+3. Report honestly that district-level data is unavailable; use territory-wide proxy with explicit caveat
 - **Source:** strategy-registry
 
 ---
@@ -325,23 +329,6 @@ Do not edit by hand; record an experience and run `hkdata.py log-render`.
 - 搜尋 `harbour` → 0 相關結果
 - 搜尋 `outlying` → 0 相關結果
 - 搜尋 `ETA` → 0 results data.gov.hk CKAN `package_search` 對渡輪類 dataset 嘅索引不完整。Star Ferry 被索引（因為 dataset name 含 "ferry"），但 TD licensed ferry（dataset name `hk-td-wcms_8-ferry-services-tt-ft` 不含 "ferry" keyword in indexed metadata）、Sun Ferry ETA、HKKF ETA 都唔被索引 ✅ 全部 endpoint 正常。Sun Ferry ETA `?route=CECC` 返回 Central→Cheung Chau 實時到達時間。TD CSV 返回 165 行時刻表。
-- **Source:** failure-log
-
----
-
-### 2026-06-22 | District-level violent crime trend by district
-
-- **Kind:** negative
-- **Category:** hkdata.py search + HKPF crime datasets
-- **Datasets:** hk-hkpf-stat-crm-stat-detail
-- **Method:** 1. Use web search fallback: site:data.gov.hk crime police to find hk-hkpf-stat-crm-stat-detail
-2. Use HKPF CSV endpoints for territory-wide trends
-3. Report honestly that district-level data is unavailable; use territory-wide proxy with explicit caveat
-- **Outcome:** unavailable
-- **Caveats:** data.gov.hk CKAN package_search does not index "crime" or "violent crime" keywords. Hong Kong Police Force does not publish District Council district-level violent crime statistics on data.gov.hk.
-- **Details:** - Search "crime" returns 0 CKAN results
-- Search "violent crime" returns 0 results
-- Available HKPF datasets (hk-hkpf-stat-crm-stat-detail) only provide territory-wide data, no District Council district breakdown data.gov.hk CKAN package_search does not index "crime" or "violent crime" keywords. Hong Kong Police Force does not publish District Council district-level violent crime statistics on data.gov.hk. ✅ Found hk-hkpf-stat-crm-stat-detail; confirmed territory-wide only; documented in security-crime-hkpf.md
 - **Source:** failure-log
 
 ---

@@ -64,40 +64,34 @@ bash ./hk.sh info "<dataset-id>" ["<id2>" ...]     # CKAN package_show: metadata
 bash ./hk.sh test "<resource-url>" ["<url2>" ...]  # fetch the endpoint; auto-detects JSON/XML/CSV
 ```
 
-## Step 5 — Document New Dataset (Mandatory)
+## Step 5 — Record as Experience (Mandatory)
+
+The purpose of Step 5 is **memory write**: the next similar question is answered
+at Step 1 without redoing Steps 2–4.
 
 ```bash
-cp ./references/template.md ./references/<category>-<dataset>.md   # then fill it in
-bash ./hk.sh reindex
 bash ./hk.sh experience-log --kind positive \
   --topic "<short description>" --pattern "<example query>" --dataset <dataset-id> \
-  --method "<what worked>" --source references/<category>-<dataset>.md
+  --method "<what worked>" <!-- when a reference doc exists, cite it in --source -->
 bash ./hk.sh log-render
 ```
 
-For a dead end (no dataset exists), log a **negative** experience instead:
-
-```bash
-bash ./hk.sh experience-log --kind negative \
-  --topic "<what was asked>" --outcome unavailable --method "<what was searched>" \
-  --caveat "<closest proxy>"
-```
-
-`experience-log` indexes the card immediately; if Ollama is down it only appends to
+It indexes the card immediately; if Ollama is down it only appends to
 `data/experiences.jsonl` — run `experience-embed` later.
 
-**Step 5 is a hard gate.** It is not complete until **all** of these are true:
-- [ ] Query is in scope (Hong Kong data.gov.hk data)
-- [ ] `references/{category}-{dataset}.md` exists
-- [ ] `references/index.md` is updated
-- [ ] `references/search-index.json` is rebuilt
-- [ ] `data/experiences.jsonl` has a positive **or** negative card
-- [ ] `logs/` views are re-rendered with `log-render`
-- [ ] API response has no missing required fields and matches query intent
-- [ ] Internal paths in documentation point to `./`
+**Write a reference doc only when the recipe is non-trivial** (endpoint quirks,
+multi-endpoint joins, proxy logic): `cp ./references/template.md
+./references/<category>-<dataset>.md`, add a row to `references/index.md` *and* an
+entry under the matching `### Category` heading, cite it via `--source`, then
+`bash ./hk.sh reindex`. For a dead end there is no doc — log a **negative** card
+instead: `… experience-log --kind negative --topic "<what was asked>"
+--outcome unavailable --method "<what was searched>" --caveat "<closest proxy>"`.
 
-If any item cannot be completed, state: "Step 5 incomplete — documentation pending"
-and list which items failed.
+**Hard gate** — if any cannot be stated true, say "Step 5 incomplete —
+documentation pending" and list the failures:
+- [ ] One experience card recorded (positive or negative — never both for the same outcome)
+- [ ] `log-render` ran after the write
+- [ ] Repeat test: the same query can now be answered at Step 1 without Steps 2–4
 
 ## Command Summary
 
@@ -117,9 +111,7 @@ When Step 1 (experience) and Step 2 (`catalog-search`) both return nothing usefu
 
 1. Search structured logs: `bash ./hk.sh log-search "<topic>" "0 results"`
 2. If a known strategy exists → use it; otherwise web search `site:data.gov.hk <topic>`
-3. Record the outcome as an experience:
-   `bash ./hk.sh experience-log --kind negative …`
-   then `bash ./hk.sh log-render`
+3. Record the outcome (Step 5, negative card) and `log-render`
 
 If Steps 3–4 reveal no dataset answers the query, your answer MUST:
 
@@ -127,13 +119,6 @@ If Steps 3–4 reveal no dataset answers the query, your answer MUST:
 2. Include an exploration log listing each dataset examined and why it didn't fit
 3. If a proxy exists, use it with an explicit caveat
    ([`references/workflow-guides.md`](references/workflow-guides.md) has the template)
-
-## Subagent Configuration
-
-For complex discovery workflows, spawn a **single subagent** with shell and file access
-to execute Steps 2–5 end-to-end: one agent only, shell + file access, high-reasoning
-model. [`references/workflow-guides.md`](references/workflow-guides.md) has a worked
-example and response templates.
 
 ## Deeper Guidance
 

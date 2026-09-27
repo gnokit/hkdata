@@ -22,13 +22,6 @@ Do not edit by hand; record an experience and run `hkdata.py log-render`.
 |-------|--------|----------|------|--------|
 | Tourism — visitor arrivals / hotel occupancy | Web search: site:data.gov.hk hotel occupancy rate Hong Kong monthly → inspect hk-cstb-cstb_tc-tc-hotel-room-occupancy-rate + hk-censtatd-tablechart-650-80001 | hk-censtatd-tablechart-650-80001, hk-cstb-cstb_tc-tc-hotel-room-occupancy-rate | 2026-09-27 | strategy-registry |
 
-### `hkdata-find.sh` (CKAN package_search API)
-
-| Topic | Method | Datasets | Date | Source |
-|-------|--------|----------|------|--------|
-| 港口貨櫃船舶統計搜尋 | 1. 用 web search 搜尋 `site:data.gov.hk vessel arrival port call Hong Kong marine department` 2. 直接搵到 dataset ID: `hk-md-mardep-vessel-arrivals-and-departures` 3. 用 `package_show` API 取得 XML endpoint URLs 4. 測試 XML endpoint 確認可用 | hk-md-mardep-vessel-arrivals-and-departures | 2026-06-22 | failure-log |
-| 羽毛球場地搜尋 | 1. 用 web search 搜尋 `site:data.gov.hk badminton lcsd facility` 2. 直接搵到 dataset IDs: `hk-lcsd-facility-facility-bmtc` 和 `hk-lcsd-facility-facility-bmtcvenue` 3. 用 `package_show` API 檢查 dataset metadata 4. Test API endpoint 確認可用 | hk-lcsd-facility-facility-bmtc, hk-lcsd-facility-facility-bmtcvenue | 2026-03-18 | failure-log |
-
 ### `package_search` (CKAN Solr index) vs `package_list` / `package_show` (DB)
 
 | Topic | Method | Datasets | Date | Source |
@@ -347,7 +340,6 @@ Do not edit by hand; record an experience and run `hkdata.py log-render`.
 |-------|--------|----------|------|--------|
 | 航運與港口 (Shipping & Port) — port cargo throughput | `hkdata-find.sh "cargo"` | - | 2026-09-27 | strategy-registry |
 | 航運與港口 (Shipping & Port) — container throughput | `hkdata-find.sh "container"` | - | 2026-09-27 | strategy-registry |
-| 航運與港口 (Shipping & Port) — vessel arrivals | Web search: `site:data.gov.hk vessel arrival port call Hong Kong marine department` | hk-md-mardep-vessel-arrivals-and-departures | 2026-09-27 | strategy-registry |
 | 航運與港口 (Shipping & Port) — Censtatd 表格 JSON API | `api/get.php?id=410-55110` | - | 2026-09-27 | strategy-registry |
 | 航運與港口 (Shipping & Port) — Marine Dept XML feed | `curl RP05005i.XML` + ElementTree 解析 | - | 2026-09-27 | strategy-registry |
 
@@ -373,6 +365,5 @@ Do not edit by hand; record an experience and run `hkdata.py log-render`.
 | 通用模式 — HKKF ETA API | 渡輪實時到達 | - | 2026-09-27 | strategy-registry |
 | 通用模式 — 完整 catalog 搜尋（取代不可靠嘅 package_search） | `catalog-sync --full --lang en,tc` → JSONL shards → `.venv/bin/python hkdata.py catalog-embed`（ChromaDB + Ollama qwen3-embedding:0.6b）→ `catalog-search "<topic>"`（dense + 關鍵字 RRF 融合） | - | 2026-09-27 | strategy-registry |
 | 通用模式 — catalog-search（ChromaDB 混合檢索） | `catalog-sync --full --lang en,tc` → JSONL shards → `.venv/bin/python hkdata.py catalog-embed`（Ollama qwen3-embedding:0.6b）→ `catalog-search "<topic>"`（dense + keyword，RRF 融合） | - | 2026-09-27 | strategy-registry |
-| 通用模式 — LCSD 健身室 / gym room 位置 | `catalog-search "gym room"` → `hk-lcsd-facility-facility-fit` → `test facility-fitrm.json` / `facility-fiteqmt.json` | hk-lcsd-facility-facility-fit | 2026-09-27 | strategy-registry |
 | 通用模式 — 學校數目／學生人數／殺校 趨勢 | `catalog-search "school places" / "student numbers"` → EDB figures CSV（tab0101 學校數目、tab0103 學生人數、tab0302 班數/容量）→ 對照 `health-births`（出生人數） | - | 2026-09-27 | strategy-registry |
 
