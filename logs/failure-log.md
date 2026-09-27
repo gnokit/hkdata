@@ -294,5 +294,43 @@
 
 ---
 
+### 2026-09-27 | Task: CKAN package_search 覆蓋率不足（0 結果問題的真正根源）
+
+**失敗組件:** `package_search` (CKAN Solr index) vs `package_list` / `package_show` (DB)
+
+**錯誤現象:**
+- `search "badminton"` / `"vessel"` / `"AQHI"` / `"ferry"` 大量關鍵字返回 0 或少數無關結果
+- `package_search?q=*:*` 只有 631 個 dataset，但 `package_list` 返回 3,822 個
+- 已知存在嘅 `hk-lcsd-facility-facility-bmtc`（title 含 "Badminton Courts"）完全唔喺 Solr index 內：`q=*:*` dump、fielded query、wildcard、`package_autocomplete` 全部搵唔到，但 `package_show?id=...` 正常返回
+
+**根本原因:** data.gov.hk 嘅 CKAN `package_search` 係 Solr-backed 索引，只覆蓋 631/3,822（約 16%）dataset；DB-backed 嘅 `package_list` 同 `package_show` 才係完整可靠。官方 API guide 只列出 package_list/package_show/group_list/group_show，並無 package_search。之前誤以為係個別 provider（LCSD/EPD/Marine）索引不全，其實係系統性覆蓋不足。
+
+**解決方案:** 建立完整線下 catalog：`catalog-sync` 用 `package_list` 做 seed（1 request），`catalog-sync --full --lang en,tc` 用 `package_show` 逐個抓取（en+tc，~2 小時、可中斷續跑），存成 `.cache/catalog/raw/catalog-NNN.jsonl`（每 500 個一個 shard），再由 `catalog-embed` 建 ChromaDB 向量庫，`catalog-search` 做 dense + 關鍵字混合搜尋。（後續已完全移除 SQLite/FTS5 同 CKAN `search`。）
+
+**驗證:** ✅ 單元測試 17 個通過；`catalog-search "badminton"` 命中 `hk-lcsd-facility-facility-bmtc`（靠 title），`vessel` 命中 Marine Dept dataset（package_search 原本 0 結果）
+
+---
+
+### 2026-09-27 | Task: CKAN package_search 退役，SQLite/FTS5 移除，改用 ChromaDB
+
+**失敗組件:** `search` (CKAN) / `catalog.py` FTS5 / `vectors.py` ChromaDB
+
+**錯誤現象:**
+- 舊 `hkdata.py search`（CKAN `package_search`）只覆蓋 631/3822 dataset，唔可以再做主要搜尋
+- 初版 offline catalog 用 SQLite FTS5 做 lexical ranking，但無法處理語意／中文簡稱（例如 `康文署`）
+
+**根本原因:** 架構決定：單一搜尋層，用 ChromaDB 取代 SQLite FTS5 同 CKAN search。ChromaDB 內部雖然用 SQLite+FTS5 做 metadata 過濾，但排序係靠向量；關鍵字只可以做 `$contains` 過濾，唔係 ranked BM25。
+
+**解決方案:**
+1. 移除 `search` (CKAN) 同 `hkdata-find.sh`、`scripts/hkdata/search.py`
+2. 移除 `catalog-reindex` 同 `.cache/catalog/index.db` (FTS5)
+3. `catalog-search` 改用 ChromaDB：dense KNN (Ollama `qwen3-embedding:0.6b`, 1024d) + 關鍵字 `$contains`，用 RRF 融合
+4. `catalog-embed` 由 JSONL shards 建向量庫；文檔用 `text_hash` 增量更新
+5. 爬取加入 `--lang en,tc`，將 tc metadata（例如 `康樂及文化事務署`）寫入 shards 再嵌入
+
+**驗證:** ✅ 3822/3822 shards 有 tc；`康文署羽毛球場` → `hk-lcsd-facility-facility-bmtc`（cos 0.632）；61 個單元測試通過
+
+---
+
 
 <!-- 新記錄請加喺上面 -->

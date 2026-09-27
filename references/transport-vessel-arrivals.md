@@ -48,7 +48,7 @@ print(f'Total arrived: {len(records)}, Container: {container}')
 - For historical vessel call statistics, see Censtatd Shipping Statistics Report (`B1020008`) — but note its CSV download endpoint (`wbr.html?download_csv=1`) returns HTML, not CSV data (broken for programmatic access).
 - Related dataset: `hk-md-mardep-non-convention-vessel-arrivals-and-departures` (river trade / coastal / Macao vessels, same XML format).
 - Related dataset: `hk-md-mardep-vessel-traffic-management-system-report` (daily VTMS report, XML).
-- CKAN `package_search` returns **0 results** for keyword `vessel` — use web search `site:data.gov.hk vessel arrival marine` to discover this dataset.
+- Find this dataset with `catalog-search "vessel"` (retired CKAN search returned 0 for `vessel`).
 
 ---
 

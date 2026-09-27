@@ -54,7 +54,7 @@ python3 ./scripts/hkdata.py test \
 
 ## Known Quirks
 
-- CKAN `package_search` indexes this dataset for "visitor arrivals" but not for "Mainland" or "tourism".
+- Find this dataset with `catalog-search "visitor arrivals"` (retired CKAN search missed "Mainland"/"tourism").
 - The `REGION` field uses short codes (`CN`, `AM`, `EU`, etc.) with a separate `REGIONDesc` description.
 
 ## Notes

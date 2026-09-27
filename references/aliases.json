@@ -1,0 +1,22 @@
+{
+  "_comment": "Query-time alias expansion for hkdata catalog-search. Keys are matched case-insensitively anywhere in the query; values are appended to the dense query and considered for the keyword pass. Keep values as the official names that appear in data.gov.hk metadata.",
+  "康文署": ["康樂及文化事務署", "LCSD", "Leisure and Cultural Services Department"],
+  "天文台": ["香港天文台", "Hong Kong Observatory", "HKO"],
+  "環保署": ["環境保護署", "Environmental Protection Department", "EPD"],
+  "渠務署": ["渠務署", "Drainage Services Department", "DSD"],
+  "水務署": ["水務署", "Water Supplies Department", "WSD"],
+  "社署": ["社會福利署", "Social Welfare Department", "SWD"],
+  "房屋署": ["房屋署", "香港房屋委員會", "Housing Authority", "Housing Department"],
+  "運房局": ["運輸及房屋局", "Transport and Housing Bureau"],
+  "運輸署": ["運輸署", "Transport Department", "TD"],
+  "教育局": ["教育局", "Education Bureau", "EDB"],
+  "醫管局": ["醫院管理局", "Hospital Authority", "HA"],
+  "衛生署": ["衞生署", "Department of Health", "DH"],
+  "食環署": ["食物環境衞生署", "Food and Environmental Hygiene Department", "FEHD"],
+  "差人": ["香港警務處", "Hong Kong Police Force", "HKPF"],
+  "警察": ["香港警務處", "Hong Kong Police Force", "HKPF"],
+  "入境處": ["入境事務處", "Immigration Department", "ImmD"],
+  "路政署": ["路政署", "Highways Department", "HyD"],
+  "地政總署": ["地政總署", "Lands Department", "LandsD"],
+  "考評局": ["香港考試及評核局", "Hong Kong Examinations and Assessment Authority", "HKEAA"]
+}

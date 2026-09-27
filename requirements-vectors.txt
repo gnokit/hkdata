@@ -1,0 +1,15 @@
+# Search-layer dependencies (optional; only needed for catalog-search / catalog-embed).
+#
+# The catalog crawler (catalog-sync) is stdlib-only and runs with plain python3.
+# Search is backed by ChromaDB with embeddings served locally by Ollama.
+#
+# Setup:
+#   python3 -m venv .venv
+#   .venv/bin/pip install -r requirements-vectors.txt
+#   ollama pull qwen3-embedding:0.6b
+#
+# Usage:
+#   .venv/bin/python ./scripts/hkdata.py catalog-embed
+#   .venv/bin/python ./scripts/hkdata.py catalog-search "康文署羽毛球場"
+
+chromadb>=1.5,<2

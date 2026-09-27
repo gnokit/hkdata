@@ -53,7 +53,7 @@ python3 ./scripts/hkdata.py test "https://www.police.gov.hk/info/doc/crime_detai
 ## Known Quirks
 
 - `crime_details.csv` is **Big5 encoded**, not UTF-8. The CLI parser may need Big5 fallback to read it.
-- CKAN `package_search` does not index "crime" or "violent crime" keywords; use web search fallback to find this dataset.
+- CKAN `package_search` did not index "crime"/"violent crime"; find this dataset with `catalog-search "crime"`.
 - No District Council district breakdown is available on data.gov.hk.
 
 ## Notes

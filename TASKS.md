@@ -1,5 +1,13 @@
 # TASKS.md — Improvement Backlog
 
+> **Historical record (as of 2026-09-27).** This backlog was written against the
+> original CKAN-`package_search` + bash-wrapper implementation. Most tasks below are
+> now **obsolete or superseded**: the CKAN `search` command and `hkdata-find.sh` were
+> removed, and search is now ChromaDB over a fully crawled offline catalog
+> (`catalog-sync --full --lang en,tc` → `catalog-embed` → `catalog-search`).
+> Kept for provenance. See [SKILL.md](SKILL.md) and
+> [references/workflow-guides.md](references/workflow-guides.md) for the current design.
+
 Findings from evaluating the skill against five complex, undocumented problems (see [EVAL_QUESTIONS.md](EVAL_QUESTIONS.md) for full details):
 - **Q1:** Port cargo throughput + vessel call counts (non-JSON resources, real-time vs historical)
 - **Q2:** District-level unemployment + PRH estate count (cross-dataset join, missing data, keyword bugs)

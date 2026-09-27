@@ -146,6 +146,8 @@
 | SWD CSV 下載 | 長者中心名單 | ⚠️ UTF-16-LE + tab 分隔，非標準 CSV |
 | 單字關鍵字搜尋 | 多字關鍵字 | ⚠️ `hkdata-find.sh` 不支援空格，用單字或 web search 代替 |
 | 中文關鍵字搜尋 | 中文 topic | ❌ `hkdata-find.sh` 無 URL encoding + CKAN 中文索引不全；改用英文同義詞 |
+| 完整 catalog 搜尋（取代不可靠嘅 package_search） | `catalog-sync --full --lang en,tc` → JSONL shards → `.venv/bin/python hkdata.py catalog-embed`（ChromaDB + Ollama qwen3-embedding:0.6b）→ `catalog-search "<topic>"`（dense + 關鍵字 RRF 融合） | ✅ 覆蓋全部 3,822 dataset（en+tc），支援中英文語意搜尋；補回 package_search 漏掉嘅 LCSD/EPD/Marine/渡輪 dataset |
+| catalog-search（ChromaDB 混合檢索） | `catalog-sync --full --lang en,tc` → JSONL shards → `.venv/bin/python hkdata.py catalog-embed`（Ollama qwen3-embedding:0.6b）→ `catalog-search "<topic>"`（dense + keyword，RRF 融合） | ✅ 覆蓋全部 3822 dataset，支援中英文語意搜尋同簡稱（康文署→康樂及文化事務署） |
 
 
 <!-- 新記錄請加喺上面 -->

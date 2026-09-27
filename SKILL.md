@@ -38,7 +38,9 @@ by the agent's native web search tools, not this skill.
 | `python3` | Stdlib-only Python CLI (`urllib`, `json`, `csv`, `xml`) | Pre-installed on macOS/Linux |
 | `curl` | Optional fallback for endpoints that block Python | Pre-installed on macOS/Linux |
 | `data.gov.hk CKAN API` | Official open data portal | No auth required for most endpoints |
-| Web search tool | Fallback when CKAN search returns 0 results | Built-in agent tool |
+| `chromadb` | Search store for `catalog-search` | `.venv/bin/pip install -r requirements-vectors.txt` |
+| Ollama + `qwen3-embedding:0.6b` | Local multilingual embeddings (1024-dim) | `ollama pull qwen3-embedding:0.6b` |
+| Web search tool | Fallback when catalog search returns 0 results | Built-in agent tool |
 | Agent tool | Spawn subagent for discovery workflow | Built-in agent tool |
 
 ---
@@ -50,8 +52,8 @@ by the agent's native web search tools, not this skill.
 | `SCRIPTS_PATH` | `./scripts` | CLI entry point and thin bash wrappers |
 | `REFERENCES_PATH` | `./references` | Verified dataset docs, registry, and search index |
 | `LOGS_PATH` | `./logs` | Structured failure log and strategy registry (JSONL + rendered markdown) |
-| `API_BASE_URL` | `https://data.gov.hk/en-data/api/3/action/` | CKAN API base |
-| `RESULTS_PER_PAGE` | `50` | Default page size |
+| `CATALOG_PATH` | `.cache/catalog/` | JSONL shards + ChromaDB vector store |
+| `API_BASE_URL` | `https://data.gov.hk/en-data/api/3/action/` | CKAN API base (`en`/`tc`/`sc` locales) |
 | `SUBAGENT_MODEL` | high-reasoning model available in your agent tool | Single subagent for Steps 2–5 |
 
 ---
@@ -62,18 +64,29 @@ by the agent's native web search tools, not this skill.
 python3 ./scripts/hkdata.py search-local "<user query>"
 ```
 
-If a verified dataset matches, read `references/{category}-{dataset}.md` and answer directly. Otherwise proceed to Step 2.
+If a verified dataset matches, read `references/{category}-{dataset}.md` and answer
+directly. Otherwise proceed to Step 2.
 
 ---
 
-## Step 2 — Search data.gov.hk
+## Step 2 — Search the Full Catalog
 
 ```bash
-python3 ./scripts/hkdata.py search "<keyword>"
-python3 ./scripts/hkdata.py search "<keyword1>" "<keyword2>" --parallel
+.venv/bin/python ./scripts/hkdata.py catalog-search "<user query>"
 ```
 
-Queries the CKAN `package_search` API. If 0 results, trigger the auto-fallback.
+ChromaDB search over all **3,822** datasets (dense multilingual embeddings fused with a
+keyword pass). If the store is empty, build it once:
+
+```bash
+python3 ./scripts/hkdata.py catalog-sync --full --lang en,tc   # crawl (resumable)
+.venv/bin/python ./scripts/hkdata.py catalog-embed              # embed into ChromaDB
+```
+
+> **Why not the CKAN search API:** `package_search` is Solr-backed and indexes only
+> ~631 of the 3,822 datasets that `package_list` returns — it misses `badminton`,
+> `vessel`, `AQHI`, `ferry`, and Chinese keywords. `catalog-search` covers the whole
+> catalog and understands Chinese.
 
 ---
 
@@ -131,10 +144,8 @@ Before starting Steps 2–5, create a task list with one item per step. Mark eac
 # Step 1: Check verified
 python3 ./scripts/hkdata.py search-local "<user query>"
 
-# Step 2: Search
-python3 ./scripts/hkdata.py search "<keyword>"
-# or multi-keyword batch search:
-python3 ./scripts/hkdata.py search "<keyword1>" "<keyword2>" --parallel
+# Step 2: Search the full catalog (ChromaDB; run from the venv)
+.venv/bin/python ./scripts/hkdata.py catalog-search "<user query>"
 
 # Step 3: Inspect
 python3 ./scripts/hkdata.py info "<dataset-id>"
@@ -159,13 +170,15 @@ python3 ./scripts/hkdata.py log-render
 | Command | Purpose |
 |---------|---------|
 | `python3 ./scripts/hkdata.py search-local "<query>"` | Search verified datasets + experience history (Step 1) |
-| `python3 ./scripts/hkdata.py search "<kw>" ...` | CKAN `package_search` (Step 2) |
-| `python3 ./scripts/hkdata.py info "<id>" ...` | CKAN `package_show` (Step 3) |
+| `.venv/bin/python ./scripts/hkdata.py catalog-search "<query>"` | ChromaDB search over the full catalog (Step 2) |
+| `python3 ./scripts/hkdata.py catalog-sync [--full] [--refresh] [--lang en,tc]` | Seed/crawl the offline catalog |
+| `.venv/bin/python ./scripts/hkdata.py catalog-embed [--model ...]` | Build the ChromaDB vector store (Ollama) |
+| `python3 ./scripts/hkdata.py catalog-status` | Show catalog coverage and vector count |
+| `python3 ./scripts/hkdata.py info "<id>" ...` | CKAN `package_show` metadata (Step 3) |
 | `python3 ./scripts/hkdata.py test "<url>" ...` | Test endpoint and detect format (Step 4) |
-| `python3 ./scripts/hkdata.py reindex` | Rebuild `references/search-index.json` |
+| `python3 ./scripts/hkdata.py reindex` | Rebuild `references/search-index.json` (curated docs) |
 | `python3 ./scripts/hkdata.py log-search "<kw>" ...` | Search structured failure/strategy logs |
 | `python3 ./scripts/hkdata.py log-render` | Regenerate markdown views from JSONL |
-| `bash ./scripts/hkdata-find.sh "<kw>"` | Backward-compatible wrapper for `search` |
 | `bash ./scripts/hkdata-info.sh "<id>"` | Backward-compatible wrapper for `info` |
 
 ---
@@ -184,13 +197,14 @@ The category → filename prefix mapping is in [`references/category-mapping.md`
 
 ## Auto-Fallback Trigger
 
-When `hkdata.py search` returns 0 results:
+When `catalog-search` returns no useful results:
 
 1. Search structured logs: `python3 ./scripts/hkdata.py log-search "<topic>" "0 results"`
-2. If known strategy → use it; otherwise web search `site:data.gov.hk <topic>`
+2. If a known strategy exists → use it; otherwise web search `site:data.gov.hk <topic>`
 3. Record outcome: append to JSONL, then `python3 ./scripts/hkdata.py log-render`
 
-**Example:** `python3 ./scripts/hkdata.py search "badminton"` → 0 results → `log-search "badminton"` → web search → `info "hk-lcsd-facility-facility-bmtc"`.
+**Example:** `catalog-search "badminton"` → finds `hk-lcsd-facility-facility-bmtc` →
+`info "hk-lcsd-facility-facility-bmtc"`.
 
 ---
 
@@ -273,4 +287,4 @@ See [`references/workflow-guides.md`](references/workflow-guides.md) for the err
 
 ## Last Updated
 
-2026-06-22 (Python CLI, structured logs, and local search index added)
+2026-09-27 (Offline catalog: `package_list`+`package_show` → JSONL shards → ChromaDB search; CKAN `package_search` retired)

@@ -1,5 +1,10 @@
 # EVAL_QUESTIONS.md — Skill Evaluation Questions
 
+> **Historical record.** These questions were run against the original CKAN
+> `package_search` implementation. References to `hkdata-find.sh` / `hkdata.py search`
+> describe that retired setup; the current search path is ChromaDB via
+> `catalog-search` (see [SKILL.md](SKILL.md)).
+
 Five complex questions used to stress-test the hkdata skill. Each probes untested axes of the workflow, scripts, and documentation. Questions were designed before evaluation to have checkable ground truth and to surface gaps not covered by the 21 pre-existing verified datasets.
 
 ---

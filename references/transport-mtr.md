@@ -47,7 +47,7 @@ Provide the arrival time information for up to the next four trains of:
 
 ## Quick Search
 ```bash
-hkdata-find.sh mtr
-hkdata-find.sh light rail
-hkdata-find.sh bus
+catalog-search mtr
+catalog-search light rail
+catalog-search bus
 ```

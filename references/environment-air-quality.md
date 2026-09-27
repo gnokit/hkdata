@@ -100,7 +100,7 @@ for item in root.findall('.//item'):
 - **AQHI scale:** 1-10 and 10+, grouped into 5 health risk categories: Low (1-3), Moderate (4-6), High (7), Very High (8-10), Serious (10+).
 - **AQHI vs PM2.5:** AQHI is a composite health risk index; PM2.5 is a specific pollutant concentration. They come from different endpoints — AQHI from RSS/JSON, PM2.5 from the pollutant XML.
 - **No broken endpoints found** — all 4 tested endpoints (RSS, XML, JSON, ZIP) are live and returning current data as of 2026-06-22.
-- **CKAN indexing gap:** `AQHI` and `pollution` keywords return 0 results in `package_search`. Use web search `site:data.gov.hk AQHI EPD` to discover these datasets.
+- **Discovery:** the retired CKAN `package_search` returned 0 for `AQHI`/`pollution`; use `catalog-search "AQHI"` (offline catalog) to find these datasets.
 - **City Dashboard JSON is ~1 hour behind RSS** — RSS shows 09:30, JSON shows 08:30 for the same hour. Use RSS for most current AQHI; use JSON for programmatic convenience.
 - **Smart Lampposts data** is a ZIP archive of historical sensor data (not real-time), and lamppost locations do not include Causeway Bay. Use the EPD station data instead.
 - Update frequency: Hourly (AQHI + pollutant concentration)

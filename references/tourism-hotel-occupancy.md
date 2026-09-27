@@ -50,7 +50,7 @@ python3 ./scripts/hkdata.py test \
 
 ## Known Quirks
 
-- CKAN `package_search` does not index "hotel" or "occupancy" keywords well. Use web search fallback if needed.
+- Find this dataset with `catalog-search "hotel occupancy"` (retired CKAN search handled "hotel" poorly).
 - CSV is hosted on tourism.gov.hk, not data.gov.hk, but the dataset metadata is on data.gov.hk.
 
 ## Notes

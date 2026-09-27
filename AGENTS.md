@@ -7,29 +7,41 @@ This is an OpenCode **skill** directory, not an application. There is no build, 
 Always invoke from the skill root via `bash ./scripts/...sh` or `python3 ./scripts/hkdata.py <subcommand>` — never `./scripts/...sh` directly, never from another cwd. All paths in `SKILL.md` and the reference docs are `./`-relative.
 
 ```bash
-bash ./scripts/hkdata-find.sh "<keyword>" [--page N]   # CKAN package_search (wrapper)
-bash ./scripts/hkdata-info.sh "<dataset-id>"            # CKAN package_show (wrapper)
-python3 ./scripts/hkdata.py search "<keyword>" [--page N]
+# search (ChromaDB) — must run from the venv
+.venv/bin/python ./scripts/hkdata.py catalog-search "<keyword>"
+# catalog maintenance (stdlib python3 is fine)
+python3 ./scripts/hkdata.py catalog-sync [--full] [--lang en,tc]
+.venv/bin/python ./scripts/hkdata.py catalog-embed
+python3 ./scripts/hkdata.py catalog-status
+# metadata / endpoint inspection (stdlib)
 python3 ./scripts/hkdata.py info "<dataset-id>"
+bash ./scripts/hkdata-info.sh "<dataset-id>"
 ```
 
-Dependencies are only `python3`. `curl` is no longer required for normal operation but can be used as a fallback. No auth needed for most data.gov.hk endpoints.
+Core dependency for the catalog is `python3` (stdlib) for crawling, but **search
+requires the venv**: `chromadb` + a local Ollama model (`qwen3-embedding:0.6b`).
+There is no SQLite/FTS5 fallback and no CKAN search anymore — the CKAN
+`package_search` API has been retired from this skill.
 
 ## The one gotcha that wastes the most time
 
-`hkdata.py search` returns **0 results for many keywords that definitely have datasets**, because data.gov.hk's CKAN `package_search` metadata indexing is incomplete. Confirmed-broken keywords include:
+CKAN's `package_search` is **Solr-backed and covers only ~631 of the ~3,822 datasets**
+that the DB-backed `package_list` returns. That is why the old `search` command missed
+`badminton`, `vessel`, `AQHI`, `ferry`, and Chinese keywords. It has been removed; the
+catalog is crawled once via `package_list` + `package_show` into JSONL shards
+(`.cache/catalog/raw/`) and searched through ChromaDB.
 
-- LCSD facilities: `badminton`, `sport`, `court`, `facility`, `recreation`, `venue`, `leisure`, `gymnasium`, `ball`, `indoor`, `outdoor`, `booking`
-- Marine Department: `vessel`, `arrival`, `ship`
-- EPD air quality: `AQHI`, `pollution`
-- Ferry datasets: `ferry` (only Star Ferry indexed), `pier`, `harbour`, `outlying`, `ETA`
-- Chinese keywords: `長者`, `老人`
+If `catalog-search` returns nothing, the store is probably not built:
+1. `python3 ./scripts/hkdata.py catalog-sync --full --lang en,tc` (once, ~2 h, resumable)
+2. `.venv/bin/python ./scripts/hkdata.py catalog-embed`
+3. Then search with `.venv/bin/python ./scripts/hkdata.py catalog-search "<topic>"`
 
-**Mandatory fallback** (do not give up after 0 results):
-1. Search structured logs: `python3 ./scripts/hkdata.py log-search "<topic>" "0 results"` — the workaround may already be recorded.
-2. Web search `site:data.gov.hk <topic> lcsd` (or `... transport`, `... census` depending on category) to find the dataset ID directly.
-3. Feed the ID to `python3 ./scripts/hkdata.py info "<dataset-id>"` to inspect.
-4. Append the winning strategy to `logs/strategy-registry.jsonl` and the failure to `logs/failure-log.jsonl`, then run `python3 ./scripts/hkdata.py log-render`.
+Otherwise fall back to:
+1. `python3 ./scripts/hkdata.py log-search "<topic>" "0 results"` — recorded workarounds.
+2. Web search `site:data.gov.hk <topic> lcsd` (or `... transport`, `... census`).
+3. Feed the ID to `python3 ./scripts/hkdata.py info "<dataset-id>"`.
+4. Append the strategy to `logs/strategy-registry.jsonl` and the failure to
+   `logs/failure-log.jsonl`, then run `python3 ./scripts/hkdata.py log-render`.
 
 ## Step 5 (documentation) is mandatory, not optional
 

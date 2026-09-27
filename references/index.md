@@ -107,7 +107,7 @@ Master index of all verified Hong Kong open data APIs.
 ## Finding New Datasets
 
 1. Use discovery workflow in [SKILL.md](../SKILL.md)
-2. Search: `bash ./scripts/hkdata-find.sh "keyword"`
+2. Search: `.venv/bin/python ./scripts/hkdata.py catalog-search "keyword"`
 3. Inspect: `bash ./scripts/hkdata-info.sh "dataset-id"`
 
 > **Maintenance note:** Keep the `Verified Datasets` table and the `By Category` section in sync. When adding a dataset, update **both**.

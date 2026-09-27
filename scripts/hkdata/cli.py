@@ -8,78 +8,26 @@ import urllib.request
 from typing import List
 
 from . import __version__
+from . import catalog
+from . import vectors
 from .common import USER_AGENT
 from .inspect import info, info_multiple
 from .index import build_index, save_index, search_local
 from .logs import load_jsonl, log_search, migrate, render
-from .normalize import expand_synonyms
 from .parse import parse_data
-from .search import search_multiple
 
 
 def _eprint(message: str) -> None:
     print(message, file=sys.stderr)
 
 
-def cmd_search(args: argparse.Namespace) -> int:
-    keywords = list(args.keywords)
-    if args.synonyms and len(keywords) == 1:
-        keywords = expand_synonyms(keywords[0])
-
-    if not keywords:
-        _eprint("Error: at least one keyword is required.")
-        return 1
-
-    _eprint(f"Searching data.gov.hk for: {', '.join(keywords)} (page {args.page})")
-
-    results = search_multiple(
-        keywords,
-        page=args.page,
-        rows=args.rows,
-        parallel=args.parallel,
-    )
-
-    seen_ids = set()
-    total_matches = 0
-    multi_source = len(keywords) > 1
-
-    for keyword, result in results:
-        if result.get("error"):
-            _eprint(f"Error for '{keyword}': {result['error']}")
-            continue
-
-        count = result.get("count", 0)
-        total_matches = max(total_matches, count)
-        datasets = result.get("datasets", [])
-
-        if not datasets:
-            if multi_source:
-                print(f"{keyword} | (0 results)")
-            continue
-
-        for ds in datasets:
-            if ds["id"] in seen_ids:
-                continue
-            seen_ids.add(ds["id"])
-            if multi_source:
-                print(f"{keyword} | {ds['id']} | {ds['title']} | {ds['notes']}")
-            else:
-                print(f"{ds['id']} | {ds['title']} | {ds['notes']}")
-
-    if not multi_source:
-        start = (args.page - 1) * args.rows + 1
-        end = start + len(seen_ids) - 1
-        if total_matches > 0:
-            total_pages = (total_matches + args.rows - 1) // args.rows
-            print(f"\nShowing results {start}-{end} of {total_matches} (page {args.page} of {total_pages})")
-            if args.page < total_pages:
-                print(f"Use --page {args.page + 1} to see more results")
-            if args.page > 1:
-                print(f"Use --page {args.page - 1} to see previous results")
-        else:
-            print("No matching datasets found.")
-
-    return 0
+def _require_chromadb() -> bool:
+    if vectors.have_chromadb():
+        return True
+    _eprint("ChromaDB is not installed. Run vector commands with the venv, e.g.:")
+    _eprint("  .venv/bin/python ./scripts/hkdata.py catalog-embed")
+    _eprint("  .venv/bin/python ./scripts/hkdata.py catalog-search \"<query>\"")
+    return False
 
 
 def cmd_info(args: argparse.Namespace) -> int:
@@ -187,6 +135,94 @@ def cmd_migrate_logs(args: argparse.Namespace) -> int:
     return 0
 
 
+# ---------------------------------------------------------------------------
+# Catalog (offline discovery) commands
+# ---------------------------------------------------------------------------
+
+
+def cmd_catalog_sync(args: argparse.Namespace) -> int:
+    paths = catalog.default_paths()
+    try:
+        langs = catalog.parse_langs(args.lang)
+    except ValueError as exc:
+        _eprint(f"Error: {exc}")
+        return 1
+    if args.refresh:
+        result = catalog.sync_refresh(paths, rate=args.rate, langs=langs)
+        if result["new"]:
+            _eprint(f"New datasets added to seed: {', '.join(result['new'])}")
+        return 0
+    if not args.full:
+        catalog.sync_seed(paths)
+        return 0
+
+    catalog.sync_seed(paths)
+    result = catalog.sync_full(paths, rate=args.rate, limit=args.limit, langs=langs)
+    if result["failed"]:
+        _eprint(f"Failed ids ({len(result['failed'])}): "
+                f"{', '.join(result['failed'][:10])}")
+    return 0
+
+
+def cmd_catalog_embed(args: argparse.Namespace) -> int:
+    if not _require_chromadb():
+        return 1
+    paths = catalog.default_paths()
+    try:
+        result = vectors.build_vectors(
+            paths, model=args.model, url=args.url, batch=args.batch)
+    except RuntimeError as exc:
+        _eprint(f"Error: {exc}")
+        return 1
+    _eprint(f"Vector store ready: {result['total']} datasets.")
+    return 0
+
+
+def cmd_catalog_search(args: argparse.Namespace) -> int:
+    if not _require_chromadb():
+        return 1
+    paths = catalog.default_paths()
+    query = " ".join(args.keywords)
+    try:
+        results = vectors.hybrid_search(query, paths, top_n=args.top_n,
+                                        model=args.model, url=args.url)
+    except RuntimeError as exc:
+        _eprint(f"Error: {exc}")
+        return 1
+    if args.json:
+        print(json.dumps(results, ensure_ascii=False, indent=2))
+        return 0
+    if not results:
+        print(f"No catalog matches for: {query}")
+        return 0
+    for item in results:
+        org = item.get("org") or "-"
+        print(f"{item['score']:.4f} | {item['name']} | {item['title']} | {org}")
+    return 0
+
+
+def cmd_catalog_status(args: argparse.Namespace) -> int:
+    paths = catalog.default_paths()
+    data = catalog.status(paths)
+    vec = vectors.vector_status(paths)
+    data["vectors"] = vec
+    if args.json:
+        print(json.dumps(data, ensure_ascii=False, indent=2))
+        return 0
+    print(f"Seed ids:      {data['seed_count']}")
+    print(f"Fetched:       {data['fetched_count']}")
+    print(f"Missing:       {data['missing_count']}")
+    print(f"Locales:       {', '.join(data['langs']) or '-'}")
+    print(f"Shards:        {data['shards']} ({data['shard_bytes'] / 1e6:.1f} MB)")
+    if vec.get("available"):
+        print(f"Vector store:  {vec.get('count', 0)} datasets")
+    else:
+        print("Vector store:  unavailable (install chromadb in the venv)")
+    print(f"Last full sync: {data['last_full_sync'] or '-'}")
+    print(f"Last activity:  {data['fetched_at'] or '-'}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="hkdata",
@@ -195,15 +231,6 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", required=True)
-
-    search_parser = subparsers.add_parser("search", help="Search data.gov.hk")
-    search_parser.add_argument("keywords", nargs="+", help="One or more search keywords")
-    search_parser.add_argument("--page", type=int, default=1, help="Page number (default: 1)")
-    search_parser.add_argument("--rows", type=int, default=50, help="Results per page (default: 50)")
-    search_parser.add_argument("--parallel", action="store_true", default=True, help="Run searches in parallel (default)")
-    search_parser.add_argument("--sequential", action="store_true", help="Run searches sequentially")
-    search_parser.add_argument("--synonyms", action="store_true", help="Expand keyword to known synonyms")
-    search_parser.set_defaults(func=cmd_search)
 
     info_parser = subparsers.add_parser("info", help="Show dataset metadata")
     info_parser.add_argument("dataset_ids", nargs="+", help="One or more dataset IDs")
@@ -236,17 +263,53 @@ def build_parser() -> argparse.ArgumentParser:
     migrate_parser = subparsers.add_parser("migrate-logs", help="One-off migration from markdown logs to JSONL")
     migrate_parser.set_defaults(func=cmd_migrate_logs)
 
+    catalog_sync_parser = subparsers.add_parser(
+        "catalog-sync", help="Seed/crawl the offline catalog (package_list + package_show)")
+    catalog_sync_parser.add_argument("--full", action="store_true",
+                                     help="Crawl every missing dataset (long, resumable)")
+    catalog_sync_parser.add_argument("--refresh", action="store_true",
+                                     help="Re-fetch datasets from the 14-day RSS feed")
+    catalog_sync_parser.add_argument("--rate", type=float, default=catalog.DEFAULT_RATE,
+                                     help=f"Requests per second (default: {catalog.DEFAULT_RATE})")
+    catalog_sync_parser.add_argument("--limit", type=int, default=None,
+                                     help="Max datasets to fetch in this run")
+    catalog_sync_parser.add_argument("--lang", default="en",
+                                     help="Comma-separated locales to fetch, e.g. en,tc,sc (default: en)")
+    catalog_sync_parser.set_defaults(func=cmd_catalog_sync)
+
+    catalog_embed_parser = subparsers.add_parser(
+        "catalog-embed", help="Build the ChromaDB vector store (local Ollama embeddings)")
+    catalog_embed_parser.add_argument("--model", default=vectors.DEFAULT_MODEL,
+                                      help=f"Ollama embedding model (default: {vectors.DEFAULT_MODEL})")
+    catalog_embed_parser.add_argument("--url", default=vectors.DEFAULT_OLLAMA_URL,
+                                      help="Ollama embed endpoint")
+    catalog_embed_parser.add_argument("--batch", type=int, default=vectors.EMBED_BATCH,
+                                      help=f"Embedding batch size (default: {vectors.EMBED_BATCH})")
+    catalog_embed_parser.set_defaults(func=cmd_catalog_embed)
+
+    catalog_search_parser = subparsers.add_parser(
+        "catalog-search", help="Search the offline catalog (ChromaDB: dense + keyword)")
+    catalog_search_parser.add_argument("keywords", nargs="+", help="Natural-language query")
+    catalog_search_parser.add_argument("--top-n", type=int, default=10,
+                                       help="Max results (default: 10)")
+    catalog_search_parser.add_argument("--model", default=vectors.DEFAULT_MODEL,
+                                       help=f"Ollama embedding model (default: {vectors.DEFAULT_MODEL})")
+    catalog_search_parser.add_argument("--url", default=vectors.DEFAULT_OLLAMA_URL,
+                                       help="Ollama embed endpoint")
+    catalog_search_parser.add_argument("--json", action="store_true", help="JSON output")
+    catalog_search_parser.set_defaults(func=cmd_catalog_search)
+
+    catalog_status_parser = subparsers.add_parser(
+        "catalog-status", help="Show offline catalog coverage")
+    catalog_status_parser.add_argument("--json", action="store_true", help="JSON output")
+    catalog_status_parser.set_defaults(func=cmd_catalog_status)
+
     return parser
 
 
 def main(argv: List[str] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-
-    # Handle --sequential overriding --parallel default.
-    if hasattr(args, "sequential") and args.sequential:
-        args.parallel = False
-
     return args.func(args)
 
 
