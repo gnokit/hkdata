@@ -332,5 +332,22 @@
 
 ---
 
+### 2026-09-27 | Task: 警方智慧閉路電視（smart CCTV）數目查詢
+
+**失敗組件:** catalog-search / data.gov.hk（HKPF 數據集）
+
+**錯誤現象:**
+- 搜尋 `CCTV`/`camera`/`surveillance camera`/`閉路電視`/`監控`/`智慧燈柱`/`天眼` 均無 HKPF 閉路電視數據
+- 33 個 `hk-hkpf-*` 數據集全部同鏡頭無關（Personnel、Arrested、Traffic Prosecutions、Complaints、Marine Police Bases 等）
+- 全 catalog 無任何 dataset 提及警方公共地方 CCTV／智慧閉路電視數目
+
+**根本原因:** 警方智慧閉路電視（及公共地方 CCTV）部署數目並非 data.gov.hk 開放數據；屬保安／執法運作資料，只在立法會文件／新聞公報公布。
+
+**解決方案:** 用最接近嘅代用數據並加註明：(1) 運輸署衝紅燈攝影機路口 230 個、偵速攝影機機箱 164 個；(2) 食環署非法棄置黑點 IP 攝影機（CSDI）；(3) SCIOCS 2024 年度報告 — 截取通訊及監察授權（非鏡頭）：發出 25、續期 13。清楚標明三者都唔等於警方智慧閉路電視。
+
+**驗證:** ✅ 確認 data.gov.hk 無此數據；已用 catalog-search 全 catalog 掃描（3,822 個 dataset）
+
+---
+
 
 <!-- 新記錄請加喺上面 -->

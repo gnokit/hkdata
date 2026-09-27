@@ -19,6 +19,7 @@ Master index of all verified Hong Kong open data APIs.
 | Badminton Court Sessions | recreation | Real-time session availability across 105 LCSD venues (5-min updates) | [recreation-badminton-sessions.md](recreation-badminton-sessions.md) |
 | School Statistics | education | Number of schools by type/sector and region (2024: 590 primary schools) | [education-schools.md](education-schools.md) |
 | Primary School Enrolment | education | Primary school enrolment by district and grade; territory-wide accommodation | [education-primary-enrolment.md](education-primary-enrolment.md) |
+| School Figures (day schools/enrolment/classes) | education | EDB annual series: schools, enrolment, classes by level/sector (2015–2025) | [education-school-figures.md](education-school-figures.md) |
 | Public Holidays | city | Hong Kong public holidays 2024-2026 (official 1823 data) | [city-holidays.md](city-holidays.md) |
 | PRH Income & Asset Limits | housing | Monthly income/asset limits for public rental housing application | [housing-prh.md](housing-prh.md) |
 | River Water Quality | environment | Recent DO and BOD5 data at downstream river monitoring stations | [environment-river-water.md](environment-river-water.md) |
@@ -26,6 +27,7 @@ Master index of all verified Hong Kong open data APIs.
 | Government Car Parks | city | Government car parks open for public use: locations, spaces, fees | [city-parking.md](city-parking.md) |
 | Crime Statistics (Persons Arrested) | security | Persons arrested for crime by offence type, age group and sex (Censtatd) | [security-crime.md](security-crime.md) |
 | HKPF Crime Statistics in Detail | security | Territory-wide overall and violent crime CSVs from HKPF (no district breakdown) | [security-crime-hkpf.md](security-crime-hkpf.md) |
+| Fitness Rooms | recreation | LCSD sports centres with fitness rooms (87) + equipment (1,925 rows) | [recreation-fitness-rooms.md](recreation-fitness-rooms.md) |
 | Cinemas | recreation | HK cinema inventory: locations, screens, seats, coordinates | [recreation-cinema.md](recreation-cinema.md) |
 | Film Development Fund | recreation | Approved FDF film projects since 2009: titles, funding, dates | [recreation-film-fund.md](recreation-film-fund.md) |
 | Film Box Office (FDF) | recreation | HK box office revenue for FDF-funded films | [recreation-film-boxoffice.md](recreation-film-boxoffice.md) |
@@ -72,6 +74,7 @@ Master index of all verified Hong Kong open data APIs.
 ### Education
 - [education-schools.md](education-schools.md) - Number of schools by type/sector and region
 - [education-primary-enrolment.md](education-primary-enrolment.md) - Primary school enrolment by district and grade
+- [education-school-figures.md](education-school-figures.md) - EDB series: day schools, enrolment and operating classes by level/sector
 
 ### City Management and Utilities
 - [city-holidays.md](city-holidays.md) - Hong Kong public holidays (2024-2026)
@@ -96,6 +99,7 @@ Master index of all verified Hong Kong open data APIs.
 ### Recreation & Culture
 - [recreation-badminton-outdoor.md](recreation-badminton-outdoor.md) - Free outdoor badminton court locations
 - [recreation-badminton-sessions.md](recreation-badminton-sessions.md) - Badminton court session availability (real-time)
+- [recreation-fitness-rooms.md](recreation-fitness-rooms.md) - LCSD fitness rooms locations + equipment (no real-time availability)
 - [recreation-cinema.md](recreation-cinema.md) - Hong Kong cinema inventory
 - [recreation-film-fund.md](recreation-film-fund.md) - Film Development Fund approved projects
 - [recreation-film-boxoffice.md](recreation-film-boxoffice.md) - Box office for FDF-funded films

@@ -148,6 +148,8 @@
 | 中文關鍵字搜尋 | 中文 topic | ❌ `hkdata-find.sh` 無 URL encoding + CKAN 中文索引不全；改用英文同義詞 |
 | 完整 catalog 搜尋（取代不可靠嘅 package_search） | `catalog-sync --full --lang en,tc` → JSONL shards → `.venv/bin/python hkdata.py catalog-embed`（ChromaDB + Ollama qwen3-embedding:0.6b）→ `catalog-search "<topic>"`（dense + 關鍵字 RRF 融合） | ✅ 覆蓋全部 3,822 dataset（en+tc），支援中英文語意搜尋；補回 package_search 漏掉嘅 LCSD/EPD/Marine/渡輪 dataset |
 | catalog-search（ChromaDB 混合檢索） | `catalog-sync --full --lang en,tc` → JSONL shards → `.venv/bin/python hkdata.py catalog-embed`（Ollama qwen3-embedding:0.6b）→ `catalog-search "<topic>"`（dense + keyword，RRF 融合） | ✅ 覆蓋全部 3822 dataset，支援中英文語意搜尋同簡稱（康文署→康樂及文化事務署） |
+| LCSD 健身室 / gym room 位置 | `catalog-search "gym room"` → `hk-lcsd-facility-facility-fit` → `test facility-fitrm.json` / `facility-fiteqmt.json` | ✅ 找到 87 間健身室；無實時 availability dataset（只有網球/羽毛球/籃球/排球有 by-venue session） |
+| 學校數目／學生人數／殺校 趨勢 | `catalog-search "school places" / "student numbers"` → EDB figures CSV（tab0101 學校數目、tab0103 學生人數、tab0302 班數/容量）→ 對照 `health-births`（出生人數） | ✅ 幼稚園學生 -39%（2015→2025）、幼稚園 -42 間；小學 2019 見頂後 -15%、班數 -1,011。無 dataset 直接列出殺校名單 |
 
 
 <!-- 新記錄請加喺上面 -->

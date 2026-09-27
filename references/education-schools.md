@@ -68,6 +68,27 @@ curl -s "https://www.censtatd.gov.hk/api/get.php?id=925-92023&lang=tc&full_serie
 - 2021: 591
 - 2020: 589
 
+**Region / sector trend (2013 → 2024, school counts):**
+
+| Group | 2013 | 2024 | Change |
+|-------|------|------|--------|
+| Public-sector primary (`PS_PUBSEC`) | 453 | 453 | **0** |
+| Private primary (`PS_PRI`) | 95 | 116 | +21 |
+| DSS secondary (`SS_DAY_DIRSUB`) | 62 | 58 | −4 |
+| Public-sector secondary (`SS_DAY_PUBSEC`) | 396 | 389 | −7 |
+| Local kindergartens (`KG_LOC`) | 869 | 850 | −19 |
+| Non-local kindergartens (`KG_NONLOC`) | 100 | 130 | +30 |
+
+By region (kindergartens): Hong Kong Island **192 → 180 (−12)**, Kowloon
+291 → 300 (+9), New Territories 486 → 500 (+14). Primary schools: HK Island
+110 → 110, Kowloon 176 → 180, NT 283 → 300.
+
+Interpretation: **school *counts* are not yet falling in the public primary
+sector** — the pressure shows up first as falling enrolment/classes (see
+[education-school-figures.md](education-school-figures.md)), and closures
+concentrate in declining markets (Hong Kong Island) and weaker schools.
+There is no school-level enrolment or closure dataset on data.gov.hk.
+
 ## Notes
 
 - **Update Frequency:** Annual
