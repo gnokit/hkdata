@@ -1,0 +1,5 @@
+# logs/*.md are rendered views generated from data/experiences.jsonl by
+# `hkdata.py log-render`. Mark them generated so GitHub folds them in diffs
+# and excludes them from language statistics.
+logs/failure-log.md        linguist-generated=true
+logs/strategy-registry.md  linguist-generated=true
