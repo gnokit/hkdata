@@ -92,11 +92,23 @@ State the temporality in the answer when it affects interpretation (e.g., "last 
 | All datasets failed | Abort entirely; return "No suitable dataset found on data.gov.hk" with exploration log |
 | Unexpected API schema | Report exact mismatch; do not attempt to parse |
 | API endpoint returns error | Check if auth is required; if not, record a negative experience (`experience-log --kind negative`) |
+| Endpoint rejects the Python client | Retry with `curl` — some endpoints block non-browser clients even though the CLI already sets a browser-like User-Agent |
 
 **Stale data rule:** If the skill falls back to cached/local data, the output MUST include a visible warning:
 ```
 ⚠️ Stale Data: [source] — last updated [YYYY-MM-DD]. Live fetch failed.
 ```
+
+---
+
+## API Notes
+
+- **Base URL:** `https://data.gov.hk/en-data/api/3/action/`
+- **Locales:** swap the `en-data` segment for `tc-data` (Traditional Chinese) or `sc-data` (Simplified Chinese)
+- **Authentication:** Most APIs do not require authentication
+- **Formats:** JSON, XML, or CSV
+- **User-Agent:** The CLI sets a browser-like User-Agent globally
+- **Rate limits:** Follow data.gov.hk terms of use
 
 ---
 

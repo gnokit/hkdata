@@ -96,7 +96,9 @@ python3 ./scripts/hkdata.py catalog-status
 | `info "<id>"` | Dataset metadata (`package_show`) |
 | `test "<url>"` | Test an endpoint and detect JSON/XML/CSV |
 | `search-local "<query>"` | Search the curated reference docs |
+| `reindex` | Rebuild `references/search-index.json` from the curated docs |
 | `log-search` / `log-render` | Query/regenerate the failure & strategy logs |
+| `bash ./scripts/hkdata-info.sh "<id>"` | Backward-compatible wrapper for `info` |
 
 Run search and embed commands from `.venv` (they need `chromadb`); `catalog-sync`, `info` and `test` work with plain `python3`.
 
@@ -116,6 +118,13 @@ tests/                   pytest suite
 
 All dataset metadata comes from **[DATA.GOV.HK](https://data.gov.hk)** and remains subject to its [terms and conditions](https://data.gov.hk/en/terms-and-conditions). The committed shards in `data/catalog/` are a **sanitized projection** of `package_show` responses: personal contact details (author/maintainer emails and phones) are stripped, and only the fields needed for search are retained. The JSONL store can be regenerated at any time with `catalog-sync`.
 
+### Further reading
+
+- [data.gov.hk Developer Guide](https://data.gov.hk/en/help/developer-guide)
+- [CKAN API Documentation](https://docs.ckan.org/en/latest/api/)
+- [HK Census and Statistics Department](https://www.censtatd.gov.hk/)
+- [HK Observatory](https://www.hko.gov.hk/)
+
 ## Tests
 
 ```bash
@@ -125,3 +134,7 @@ All dataset metadata comes from **[DATA.GOV.HK](https://data.gov.hk)** and remai
 ## License
 
 [MIT](LICENSE) for the code and documentation. The underlying government data is covered by the DATA.GOV.HK terms of use, not the MIT licence.
+
+---
+
+_Last updated 2026-09-27 — offline catalog (`package_list` + `package_show` → JSONL shards → ChromaDB search); CKAN `package_search` retired._

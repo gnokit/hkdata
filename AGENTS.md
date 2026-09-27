@@ -58,7 +58,7 @@ Otherwise fall back to:
 
 ## Step 5 (documentation) is mandatory, not optional
 
-When a new dataset is discovered and verified, you MUST:
+The canonical checklist is the **hard gate** in `SKILL.md`'s "Step 5" section. When a new dataset is discovered and verified, the repo-side specifics are:
 1. `cp ./references/template.md ./references/{category}-{dataset}.md` and fill it in.
 2. Add a row to the table in `references/index.md` AND an entry under the right `### Category` heading there.
 3. Run `python3 ./scripts/hkdata.py reindex` to rebuild `references/search-index.json`.
@@ -93,4 +93,32 @@ Only Hong Kong government data from data.gov.hk. Non-HK data, non-government sou
 
 ## Subagent delegation
 
-For complex discovery, `SKILL.md` specifies spawning a **single** subagent with shell and file access to run Steps 2–5 end-to-end. Do not split into multiple subagents. Use the highest-reasoning model available in your agent tool. The exact spawn syntax is in the "Subagent Configuration" section of `SKILL.md`.
+For complex discovery, `SKILL.md` specifies spawning a **single** subagent with shell and file access to run Steps 2–5 end-to-end. Do not split into multiple subagents. Use the highest-reasoning model available in your agent tool. The requirements are in the "Subagent Configuration" section of `SKILL.md`; a worked example and response templates are in [`references/workflow-guides.md`](references/workflow-guides.md).
+
+## Keeping SKILL.md minimal
+
+`SKILL.md` is the **runtime entrypoint** — what a skill consumer reads to answer a
+query. Keep it to the workflow contract only. It must not grow when datasets are
+added, and it must not carry development, setup, or maintenance material:
+
+| Content | Belongs in |
+|---|---|
+| Query workflow (Steps 1–5), fallback, answer contracts | `SKILL.md` |
+| First-run install, venv, Ollama, building/refreshing the stores | `SETUP.md` |
+| CLI reference, architecture, attribution | `README.md` |
+| Repo upkeep, conventions, gotchas for maintainers | `AGENTS.md` |
+| Response templates, deep guidance, failure patterns | `references/workflow-guides.md` |
+
+Verified datasets live in `references/index.md`, the category mapping in
+`references/category-mapping.md`, and experience history in `logs/`.
+
+## Weekly self-evolution review (every 7 days)
+
+1. Read `data/experiences.jsonl` (and the rendered views in `logs/`)
+2. Identify patterns: common failure causes, effective fallback strategies,
+   experiences whose `date` is stale or superseded
+3. Update `references/workflow-guides.md` and `AGENTS.md` if guidance changes
+4. Archive/dedupe experiences, then `experience-migrate` + `experience-embed`
+5. Run `python3 ./scripts/hkdata.py log-render` after cleanup
+
+**Trigger:** spawn a single subagent with the task "hkdata weekly self-evolution review".
