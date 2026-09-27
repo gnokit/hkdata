@@ -165,6 +165,6 @@ datasets; aliases and fusion changes need no re-embedding.
 | Chinese abbreviation (e.g. `康文署`) not found | Abbreviations are coined truncations; the full form (`康樂及文化事務署`) is in the tc metadata | Dense embeddings bridge it (cos ≈ 0.79) and `aliases.json` expands it deterministically — add a mapping if one is missing |
 | A dataset the CKAN API used to return is now missing | CKAN `package_search` was retired (Solr covered only ~631/3,822) | Use `catalog-search`, which covers the full catalog |
 | Subagent fails to create reference file | Permission issue or wrong path | Verify references are written to `./references` |
-| Agent tool syntax error | Legacy spawn syntax | Use your agent tool's equivalent of a single coder subagent with shell access |
+| Agent tool syntax error | Legacy or over-split spawning | At most one subagent; use your agent tool's equivalent of a single coder subagent with shell access |
 
 When a new failure pattern is discovered, fix it, add a row here, and update the relevant step or checklist.

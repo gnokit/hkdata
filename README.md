@@ -34,7 +34,7 @@ The agent workflow in [`SKILL.md`](SKILL.md) is:
 
 - **Bilingual:** en + Traditional Chinese metadata (`--lang en,tc`), so `康文署` resolves to `康樂及文化事務署`.
 - **Hybrid retrieval:** ChromaDB dense KNN fused with a case-insensitive keyword pass (`references/aliases.json` expands common HK abbreviations).
-- **Experience memory:** `data/experiences.jsonl` (committed) holds ~120 positive/negative cards derived from the curated references and logs, each dated so stale lessons are visible.
+- **Experience memory:** `data/experiences.jsonl` (committed) holds ~112 positive/negative cards derived from the curated references and logs, each dated so stale lessons are visible. Discoveries are recorded as cards per Step 5 of [`SKILL.md`](SKILL.md) — a reference doc in `references/` is only written when the recipe is non-trivial.
 - **No finished answers are embedded** — cards point to datasets and methods; the agent still queries the live endpoint.
 
 ## Requirements

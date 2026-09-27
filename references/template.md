@@ -1,6 +1,8 @@
 # Dataset Template
 
-Use this template when documenting a new dataset.
+Use this template when a dataset's recipe is non-trivial (endpoint quirks,
+multi-endpoint joins, proxy logic). Simple discoveries need no reference doc —
+record them as experience cards per Step 5 in [`SKILL.md`](../SKILL.md).
 
 ---
 

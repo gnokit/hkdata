@@ -112,14 +112,19 @@ Master index of all verified Hong Kong open data APIs.
 
 1. Use discovery workflow in [SKILL.md](../SKILL.md)
 2. Search: `bash ./hk.sh catalog-search "keyword"`
-3. Inspect: `bash ./scripts/hkdata-info.sh "dataset-id"`
+3. Inspect: `bash ./hk.sh info "dataset-id"`
 
 > **Maintenance note:** Keep the `Verified Datasets` table and the `By Category` section in sync. When adding a dataset, update **both**.
 
 ## Adding New Datasets
 
+Step 5 in [SKILL.md](../SKILL.md) records every discovery as an experience card;
+that is mandatory. A reference doc **here** is written only when the recipe is
+non-trivial (endpoint quirks, multi-endpoint joins, proxy logic):
+
 1. Copy [template.md](template.md)
-2. Rename to `{category}-{dataset}.md`
+2. Rename to `{category}-{dataset}.md` and fill it in
 3. Update this index (`Verified Datasets` table **and** `By Category` section)
-4. Run `bash ./hk.sh reindex` to rebuild `search-index.json`
-5. If fallback was used, record an experience (`experience-log`) and run `bash ./hk.sh log-render`
+4. Cite the doc from the card: `--source references/<category>-<dataset>.md`
+   on `experience-log`, then run `bash ./hk.sh reindex` to rebuild `search-index.json`
+5. One dataset → one card — check `experience-search` before logging a duplicate
