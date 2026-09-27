@@ -43,6 +43,10 @@ by the agent's native web search tools, not this skill.
 | Web search tool | Fallback when catalog search returns 0 results | Built-in agent tool |
 | Agent tool | Spawn subagent for discovery workflow | Built-in agent tool |
 
+> **First time using this repo?** Follow [`SETUP.md`](SETUP.md) to create the venv,
+> pull the Ollama embedding model, and build the ChromaDB store. The catalog shards
+> are committed, so no crawl is needed.
+
 ---
 
 ## Configuration
@@ -229,7 +233,7 @@ After every successful discovery, append the topic, working keywords, and method
 
 ## Subagent Configuration
 
-For complex discovery workflows, spawn a **single subagent** with shell and file access to execute Steps 2–5 end-to-end. Requirements: one agent only, shell + file access, high-reasoning model. See [`references/workflow-guides.md`](references/workflow-guides.md) for an OpenCode example and response templates.
+For complex discovery workflows, spawn a **single subagent** with shell and file access to execute Steps 2–5 end-to-end. Requirements: one agent only, shell + file access, high-reasoning model. See [`references/workflow-guides.md`](references/workflow-guides.md) for a worked example and response templates.
 
 ---
 

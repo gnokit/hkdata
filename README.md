@@ -4,7 +4,7 @@ A discovery and search toolkit for **Hong Kong government open data** ([DATA.GOV
 
 It answers questions like *"any government gym room in Cheung Sha Wan?"*, *"what's the air quality index right now?"*, or *"are schools closing because of falling enrolment?"* by finding the right dataset and querying its official API — with an honest answer when the data doesn't exist.
 
-It is packaged as an [OpenCode](https://opencode.ai) **skill** (`SKILL.md` defines the discovery workflow), but the CLI runs standalone.
+It is designed as a **skill for AI agents**: [`SKILL.md`](SKILL.md) defines the discovery workflow an agent follows, and the CLI works standalone for humans. The instructions are plain Markdown, so any agent with shell and file access can use it — it is not tied to a particular agent runtime.
 
 ## Why not just use the portal's search API?
 
@@ -40,6 +40,8 @@ references/*.md                    curated, tested per-dataset docs (endpoints, 
 | [Ollama](https://ollama.com) + `qwen3-embedding:0.6b` | local multilingual embeddings |
 
 ## Setup
+
+Full first-run instructions are in **[SETUP.md](SETUP.md)**. In short:
 
 ```bash
 python3 -m venv .venv

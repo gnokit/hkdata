@@ -1,8 +1,10 @@
 # AGENTS.md
 
-This is an OpenCode **skill** directory, not an application. There is no build, test, lint, or typecheck. The entrypoint is `SKILL.md`, which defines a mandatory 5-step dataset discovery workflow. Everything below is stuff `SKILL.md` implies but an agent commonly gets wrong.
+This is an AI-agent **skill** directory, not an application. There is no build, lint, or typecheck (there is a pytest suite). The entrypoint is `SKILL.md`, which defines a mandatory 5-step dataset discovery workflow. Everything below is stuff `SKILL.md` implies but an agent commonly gets wrong.
 
 ## Running the scripts
+
+First-time setup (venv, Ollama model, vector store) is in [`SETUP.md`](SETUP.md).
 
 Always invoke from the skill root via `bash ./scripts/...sh` or `python3 ./scripts/hkdata.py <subcommand>` — never `./scripts/...sh` directly, never from another cwd. All paths in `SKILL.md` and the reference docs are `./`-relative.
 
