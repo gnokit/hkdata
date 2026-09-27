@@ -22,6 +22,12 @@ Do not edit by hand; record an experience and run `hkdata.py log-render`.
 |-------|--------|----------|------|--------|
 | Tourism — visitor arrivals / hotel occupancy | Web search: site:data.gov.hk hotel occupancy rate Hong Kong monthly → inspect hk-cstb-cstb_tc-tc-hotel-room-occupancy-rate + hk-censtatd-tablechart-650-80001 | hk-censtatd-tablechart-650-80001, hk-cstb-cstb_tc-tc-hotel-room-occupancy-rate | 2026-09-27 | strategy-registry |
 
+### Uncategorised
+
+| Topic | Method | Datasets | Date | Source |
+|-------|--------|----------|------|--------|
+| HK monthly/daily temperature history (HKO) | CLMTEMP CSV from HKO open data API. Filter rows: 5 cols, digit year, target month, numeric value (skip '***'). HQ station code HKO. 2021-2025 Oct means: 26.0/26.2/26.5/27.3/27.4 — 5yr avg 26.7 vs 1991-2020 normal 26.4. | hk-hko-rss-daily-temperature-info-hko | 2026-09-27 | references/weather-oct-climate.md |
+
 ### `package_search` (CKAN Solr index) vs `package_list` / `package_show` (DB)
 
 | Topic | Method | Datasets | Date | Source |

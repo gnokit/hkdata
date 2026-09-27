@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 37,
+  "count": 38,
   "datasets": [
     {
       "id": "hk-dpo-statistic-cal",
@@ -1384,9 +1384,7 @@
         "Floodlight availability varies by venue (noted in Opening_hours)",
         "Update frequency: As and when new facility is added or amendment is made"
       ],
-      "fallback_search_terms": [
-        "site:data.gov.hk badminton lcsd facility"
-      ]
+      "fallback_search_terms": []
     },
     {
       "id": "hk-lcsd-facility-facility-bmtcvenue",
@@ -1502,9 +1500,7 @@
         "Court fees apply (chargeable venues)",
         "Data dictionary: https://www.lcsd.gov.hk/datagovhk/facility/facility-bmtcvenue_data_dictionary.pdf"
       ],
-      "fallback_search_terms": [
-        "site:data.gov.hk badminton lcsd facility"
-      ]
+      "fallback_search_terms": []
     },
     {
       "id": "hk-cstb-cstb_ccida-hkcinemas`\n- **URL:** https://data.gov.hk/en-data/dataset/hk-cstb-cstb_ccida-hkcinemas\n- **Provider:** Culture, Sports and Tourism Bureau (Create Hong Kong)\n- **Category:** Recreation and Culture\n- **Update Frequency:** QUARTERLY",
@@ -2392,9 +2388,7 @@
         "Related dataset: `hk-md-mardep-vessel-traffic-management-system-report` (daily VTMS report, XML).",
         "Find this dataset with `catalog-search \"vessel\"` (retired CKAN search returned 0 for `vessel`)."
       ],
-      "fallback_search_terms": [
-        "site:data.gov.hk vessel arrival port call Hong Kong marine department"
-      ]
+      "fallback_search_terms": []
     },
     {
       "id": "weather-current",
@@ -2459,6 +2453,108 @@
       ],
       "last_verified": "2026-03-13",
       "known_quirks": [],
+      "fallback_search_terms": []
+    },
+    {
+      "id": "hk-hko-rss-daily-temperature-info-hko",
+      "title": "Dataset Template",
+      "category": "climate and weather",
+      "filename": "weather-oct-climate.md",
+      "description": "Daily maximum, mean and minimum air temperatures at Hong Kong Observatory\n Headquarters from 1884 to present (updated monthly, ~1 month lag). Useful for\n\"average temp in month X of year Y\" style questions. 229 resources cover all\nstations × series; the argument style needs only the HKO headquarters.",
+      "keywords": [
+        "###",
+        "----------",
+        "-----------",
+        "-------------",
+        "1884",
+        "229",
+        "air",
+        "all",
+        "and",
+        "api",
+        "argument",
+        "at",
+        "average",
+        "climate",
+        "climates",
+        "clmtemp",
+        "code",
+        "cover",
+        "csv",
+        "daily",
+        "data",
+        "dataset",
+        "datatype",
+        "datatype=clmtemp&rformat=csv&station=hko",
+        "description",
+        "determining",
+        "docs",
+        "for",
+        "from",
+        "gov",
+        "headquarters",
+        "hk",
+        "hko",
+        "hong",
+        "hq",
+        "https",
+        "in",
+        "info",
+        "kong",
+        "lag",
+        "link",
+        "maximum",
+        "mean",
+        "minimum",
+        "month",
+        "monthly",
+        "needs",
+        "observatory",
+        "of",
+        "only",
+        "opendata",
+        "other",
+        "parameter",
+        "parameters",
+        "php",
+        "present",
+        "questions",
+        "required",
+        "resources",
+        "rformat",
+        "see",
+        "series",
+        "station",
+        "stations",
+        "style",
+        "temp",
+        "temperatures",
+        "template",
+        "the",
+        "to",
+        "types",
+        "updated",
+        "url",
+        "useful",
+        "weather",
+        "weatherapi",
+        "year",
+        "yes",
+        "~1"
+      ],
+      "endpoint": "https://data.weather.gov.hk/weatherAPI/opendata/opendata.php`\n\n### Parameters\n\n| Parameter | Required | Description |\n|-----------|----------|-------------|\n| `dataType` | Yes | `CLMTEMP` for temperatures; see the API docs (link) for other CLimates types |\n| `rformat` | Yes | `csv` |\n| `station` | Yes | Station code — `HKO` = Observatory HQ |\n\nDetermining URL (from `info`): \n```\nhttps://data.weather.gov.hk/weatherAPI/opendata/opendata.php?dataType=CLMTEMP&rformat=csv&station=HKO",
+      "format": "xml",
+      "temporality": "historical",
+      "join_keys": [
+        "period",
+        "station"
+      ],
+      "last_verified": "2026-09-27",
+      "known_quirks": [
+        "Full API doc: https://data.weather.gov.hk/weatherAPI/doc/HKO_Open_Data_API_Documentation.pdf",
+        "CLimate-summary page: https://www.weather.gov.hk/en/cis/climat.htm",
+        "1991–2020 HKO Oct normal: **26.4 °C** (source: HKO climate normals page)."
+      ],
       "fallback_search_terms": []
     },
     {

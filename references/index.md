@@ -9,6 +9,7 @@ Master index of all verified Hong Kong open data APIs.
 | KMB Bus ETA | transport | Real-time bus arrival times | [transport-kmb.md](transport-kmb.md) |
 | Sunrise/Sunset | weather | Daily sunrise and sunset times | [weather-sunrise.md](weather-sunrise.md) |
 | Current Weather | weather | Real-time weather and forecasts | [weather-current.md](weather-current.md) |
+| Daily Temp History | weather | Daily max/mean/min temps 1884-present (HKO HQ) | [weather-oct-climate.md](weather-oct-climate.md) |
 | Address Lookup | location | Hong Kong address geocoding | [location-address.md](location-address.md) |
 | Population Statistics | population | HK population by district (mid-year estimates) | [population-census.md](population-census.md) |
 | GDP Statistics | finance | GDP, price deflator, per capita GDP | [finance-gdp.md](finance-gdp.md) |
@@ -59,6 +60,7 @@ Master index of all verified Hong Kong open data APIs.
 ### Weather
 - [weather-sunrise.md](weather-sunrise.md) - Sunrise/sunset times
 - [weather-current.md](weather-current.md) - Current conditions & forecasts
+- [weather-oct-climate.md](weather-oct-climate.md) - Daily temp history 1884-present (HK Observatory, monthly CSV)
 
 ### Location
 - [location-address.md](location-address.md) - Address lookup service
