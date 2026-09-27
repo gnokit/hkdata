@@ -49,7 +49,7 @@ curl -s "https://www.gpa.gov.hk/doc/psi/ds/psi-t-cp_ENG.csv" | head -5
 - JSON response may include a UTF-8 BOM; strip first 3 bytes if parsing fails
 - Fields include: Car Park Name, District, Address, Vehicle Type, Size, Height Restriction, Opening Hours, EV Chargers, Parking Fees
 - Some car parks are only open night-time on weekdays, 24h on weekends
-- Contact: Ms. TSE Lai Ping | plptse@gpa.gov.hk
+- Contact: Government Property Agency — see the dataset page on data.gov.hk
 
 ---
 
