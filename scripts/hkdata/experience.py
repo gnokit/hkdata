@@ -71,6 +71,7 @@ def normalize(exp: Dict) -> Dict:
         "endpoint": _scrub(exp.get("endpoint") or ""),
         "outcome": _scrub(exp.get("outcome") or ""),
         "caveats": _as_list(exp.get("caveats")),
+        "details": _scrub(exp.get("details") or ""),
         "source": source,
         "date": str(exp.get("date") or time.strftime("%Y-%m-%d")),
         "last_verified": str(exp.get("last_verified") or exp.get("date")
@@ -96,6 +97,8 @@ def build_document(exp: Dict) -> str:
         parts.append("Outcome: " + exp["outcome"])
     if exp["caveats"]:
         parts.append("Caveats: " + "; ".join(exp["caveats"]))
+    if exp["details"]:
+        parts.append("Details: " + exp["details"][:400])
     parts.append("Kind: " + exp["kind"])
     return "\n".join(parts)
 
@@ -432,7 +435,8 @@ def cards_from_logs(logs_dir: Path = LOGS_DIR) -> List[Dict]:
             "method": method,
             "outcome": result,
             "caveats": [],
-            "source": "logs/strategy-registry.jsonl",
+            "details": "",
+            "source": "strategy-registry",
             "date": str(rec.get("date") or ""),
         })
     for rec in _load_jsonl(Path(logs_dir) / "failure-log.jsonl"):
@@ -442,6 +446,8 @@ def cards_from_logs(logs_dir: Path = LOGS_DIR) -> List[Dict]:
                 rec.get("task", ""), rec.get("symptom", ""),
                 rec.get("root_cause", ""), rec.get("solution", ""), verification):
             kind = KIND_NEGATIVE
+        details = " ".join(str(rec.get(k) or "") for k in
+                           ("symptom", "root_cause", "verification")).strip()
         cards.append({
             "kind": kind,
             "topic": str(rec.get("task") or ""),
@@ -451,7 +457,8 @@ def cards_from_logs(logs_dir: Path = LOGS_DIR) -> List[Dict]:
             "method": str(rec.get("solution") or rec.get("root_cause") or ""),
             "outcome": "resolved" if kind == KIND_POSITIVE else "unavailable",
             "caveats": [str(rec.get("root_cause"))] if rec.get("root_cause") else [],
-            "source": "logs/failure-log.jsonl",
+            "details": details,
+            "source": "failure-log",
             "date": str(rec.get("date") or ""),
         })
     return cards
@@ -460,23 +467,31 @@ def cards_from_logs(logs_dir: Path = LOGS_DIR) -> List[Dict]:
 def migrate(references_dir: Path = catalog.REFERENCES_DIR,
             logs_dir: Path = LOGS_DIR,
             path: Path = EXPERIENCES_PATH, verbose: bool = True) -> dict:
-    """Regenerate experiences.jsonl from references and logs.
+    """Upsert reference-derived cards into ``data/experiences.jsonl``.
 
-    Cards derived from references/logs are rebuilt from source, so re-running
-    after a parsing change yields a clean file. Only hand-written experiences
-    (``source == "manual"``) are preserved verbatim.
+    ``experiences.jsonl`` is the canonical store: existing cards (including ones
+    originally seeded from the logs, and hand-written ones) are preserved, while
+    a card per curated reference document is added or refreshed. Where the legacy
+    ``logs/*.jsonl`` files still exist they are also ingested, then deduped by
+    ``(topic, source)``.
     """
     cards = cards_from_references(references_dir) + cards_from_logs(logs_dir)
-    preserved = {r["id"]: r for r in load_experiences(path)
-                 if r.get("source") == "manual"}
-    existing = dict(preserved)
+    merged: Dict[str, Dict] = {r["id"]: r for r in load_experiences(path)}
     for card in cards:
         record = normalize(card)
-        existing[record["id"]] = record
-    save_experiences(list(existing.values()), path)
-    positives = sum(1 for r in existing.values() if r["kind"] == KIND_POSITIVE)
-    negatives = len(existing) - positives
+        merged[record["id"]] = record
+
+    # Collapse true duplicates (same topic+source+method, e.g. a kind flip whose
+    # id changed), while keeping distinct methods for the same topic.
+    deduped: Dict[Tuple[str, str, str], Dict] = {}
+    for record in merged.values():
+        deduped[(record["topic"], record["source"], record["method"])] = record
+    records = list(deduped.values())
+    save_experiences(records, path)
+
+    positives = sum(1 for r in records if r["kind"] == KIND_POSITIVE)
+    negatives = len(records) - positives
     if verbose:
-        print(f"Experiences: {len(existing)} cards ({positives} positive, "
+        print(f"Experiences: {len(records)} cards ({positives} positive, "
               f"{negatives} negative) -> {path}", file=sys.stderr)
-    return {"total": len(existing), "positive": positives, "negative": negatives}
+    return {"total": len(records), "positive": positives, "negative": negatives}

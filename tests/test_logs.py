@@ -1,96 +1,56 @@
+from hkdata import experience
 from hkdata.logs import (
-    _extract_field,
-    parse_failure_markdown,
-    parse_strategy_markdown,
+    log_search,
     render_failure_log,
     render_strategy_registry,
 )
 
 
-FAILURE_MD = """# Failure Log
-
-## Format
-
-```
-## [日期] Task: <任務描述>
-
-**失敗組件:** <script/API/tool 名稱>
-```
-
----
-
-## 記錄
-
-### 2026-06-22 | Task: 測試失敗
-
-**失敗組件:** `test-component`
-
-**錯誤現象:** 
-- Error 1
-- Error 2
-
-**根本原因:** Root cause
-
-**解決方案:** Fix it
-
-**驗證:** ✅ 成功
-
----
-
-<!-- 新記錄請加喺上面 -->
-"""
-
-STRATEGY_MD = """# Strategy Registry
-
-## 成功策略記錄
-
-### Category A
-
-| Topic | 嘗試方法 | 結果 |
-|-------|---------|------|
-| topic1 | method1 | ✅ result1 |
-| topic2 | method2 | ❌ result2 |
-
-<!-- 新記錄請加喺上面 -->
-"""
+def _neg(topic="police smart camera", category="law-and-security"):
+    return experience.normalize({
+        "kind": "negative", "topic": topic, "category": category,
+        "method": "searched catalog; not published", "outcome": "unavailable",
+        "caveats": ["no dataset on data.gov.hk"], "details": "Symptom: none available",
+        "source": "failure-log", "date": "2026-09-27",
+    })
 
 
-def test_extract_field():
-    body = "**失敗組件:** `comp`\n\n**錯誤現象:** symptom"
-    assert _extract_field(body, "失敗組件") == "`comp`"
-    assert _extract_field(body, "錯誤現象") == "symptom"
+def _pos(topic="Cheung Sha Wan gym", category="recreation"):
+    return experience.normalize({
+        "kind": "positive", "topic": topic, "category": category,
+        "datasets": ["hk-lcsd-facility-facility-fit"],
+        "method": "call facility-fitrm.json", "outcome": "located",
+        "source": "references/recreation-fitness-rooms.md", "date": "2026-09-27",
+    })
 
 
-def test_parse_failure_markdown():
-    records = parse_failure_markdown(FAILURE_MD)
-    assert len(records) == 1
-    rec = records[0]
-    assert rec["date"] == "2026-06-22"
-    assert rec["task"] == "測試失敗"
-    assert "test-component" in rec["component"]
-    assert "Error 1" in rec["symptom"]
-    assert "Root cause" in rec["root_cause"]
-    assert "Fix it" in rec["solution"]
-    assert "成功" in rec["verification"]
+def test_render_failure_log_from_negative_experiences():
+    md = render_failure_log([_neg(), _pos()])
+    assert "police smart camera" in md
+    assert "**Kind:** negative" in md
+    assert "**Details:** Symptom: none available" in md
+    # positive experiences are not part of the failure view
+    assert "Cheung Sha Wan gym" not in md
 
 
-def test_parse_strategy_markdown():
-    records = parse_strategy_markdown(STRATEGY_MD)
-    assert len(records) == 2
-    assert records[0]["category"] == "Category A"
-    assert records[0]["topic"] == "topic1"
-    assert records[1]["topic"] == "topic2"
+def test_render_strategy_registry_groups_by_category():
+    md = render_strategy_registry([_pos(), _neg()])
+    assert "### recreation" in md
+    assert "Cheung Sha Wan gym" in md
+    assert "hk-lcsd-facility-facility-fit" in md
+    # negative experiences are not part of the strategy view
+    assert "police smart camera" not in md
 
 
-def test_render_failure_log_roundtrip():
-    records = parse_failure_markdown(FAILURE_MD)
-    rendered = render_failure_log(records)
-    assert "### 2026-06-22 | Task: 測試失敗" in rendered
-    assert "**失敗組件:**" in rendered
+def test_log_search_filters_by_kind(monkeypatch):
+    records = [_neg(), _pos()]
+    monkeypatch.setattr(experience, "load_experiences", lambda *a, **k: records)
 
+    both = log_search(None, ["cheung"])
+    assert {r["kind"] for r in both} == {"positive"}
 
-def test_render_strategy_registry_roundtrip():
-    records = parse_strategy_markdown(STRATEGY_MD)
-    rendered = render_strategy_registry(records)
-    assert "### Category A" in rendered
-    assert "| topic1 | method1 | ✅ result1 |" in rendered
+    negative = log_search(["failure-log"], ["police"])
+    assert len(negative) == 1 and negative[0]["kind"] == "negative"
+
+    positive = log_search(["strategy-registry"], ["gym"])
+    assert len(positive) == 1 and positive[0]["kind"] == "positive"

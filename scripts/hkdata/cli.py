@@ -15,7 +15,7 @@ from . import vectors
 from .common import USER_AGENT
 from .inspect import info, info_multiple
 from .index import build_index, save_index, search_local
-from .logs import load_jsonl, log_search, migrate, render
+from .logs import log_search, render
 from .parse import parse_data
 
 
@@ -118,7 +118,7 @@ def cmd_log_search(args: argparse.Namespace) -> int:
     keywords = list(args.keywords)
     results = log_search(names, keywords)
     if not results:
-        print("No matching log entries.")
+        print("No matching experiences.")
         return 0
     for record in results:
         print(json.dumps(record, ensure_ascii=False, indent=2))
@@ -127,13 +127,7 @@ def cmd_log_search(args: argparse.Namespace) -> int:
 
 def cmd_log_render(args: argparse.Namespace) -> int:
     render()
-    _eprint("Rendered logs/failure-log.md and logs/strategy-registry.md from JSONL.")
-    return 0
-
-
-def cmd_migrate_logs(args: argparse.Namespace) -> int:
-    migrate()
-    _eprint("Migrated logs/failure-log.md and logs/strategy-registry.md to JSONL.")
+    _eprint("Rendered logs/failure-log.md and logs/strategy-registry.md from experiences.")
     return 0
 
 
@@ -321,7 +315,8 @@ def build_parser() -> argparse.ArgumentParser:
     search_local_parser.add_argument("--top-n", type=int, default=10, help="Max results (default: 10)")
     search_local_parser.set_defaults(func=cmd_search_local)
 
-    log_search_parser = subparsers.add_parser("log-search", help="Search failure/strategy logs")
+    log_search_parser = subparsers.add_parser(
+        "log-search", help="Lexical search of experiences (by kind)")
     log_search_parser.add_argument("keywords", nargs="+", help="Keywords to search")
     log_search_parser.add_argument(
         "--names",
@@ -330,11 +325,9 @@ def build_parser() -> argparse.ArgumentParser:
     )
     log_search_parser.set_defaults(func=cmd_log_search)
 
-    log_render_parser = subparsers.add_parser("log-render", help="Regenerate markdown logs from JSONL")
+    log_render_parser = subparsers.add_parser(
+        "log-render", help="Regenerate the logs/ markdown views from experiences")
     log_render_parser.set_defaults(func=cmd_log_render)
-
-    migrate_parser = subparsers.add_parser("migrate-logs", help="One-off migration from markdown logs to JSONL")
-    migrate_parser.set_defaults(func=cmd_migrate_logs)
 
     catalog_sync_parser = subparsers.add_parser(
         "catalog-sync", help="Seed/crawl the offline catalog (package_list + package_show)")

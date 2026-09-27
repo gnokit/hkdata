@@ -122,4 +122,4 @@ Master index of all verified Hong Kong open data APIs.
 2. Rename to `{category}-{dataset}.md`
 3. Update this index (`Verified Datasets` table **and** `By Category` section)
 4. Run `python3 ./scripts/hkdata.py reindex` to rebuild `search-index.json`
-5. If fallback was used, append to `logs/failure-log.jsonl` and `logs/strategy-registry.jsonl`, then run `python3 ./scripts/hkdata.py log-render`
+5. If fallback was used, record an experience (`experience-log`) and run `python3 ./scripts/hkdata.py log-render`

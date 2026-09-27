@@ -52,8 +52,9 @@ Otherwise fall back to:
 1. `python3 ./scripts/hkdata.py log-search "<topic>" "0 results"` — recorded workarounds.
 2. Web search `site:data.gov.hk <topic> lcsd` (or `... transport`, `... census`).
 3. Feed the ID to `python3 ./scripts/hkdata.py info "<dataset-id>"`.
-4. Append the strategy to `logs/strategy-registry.jsonl` and the failure to
-   `logs/failure-log.jsonl`, then run `python3 ./scripts/hkdata.py log-render`.
+4. Record the outcome as an experience and re-render the views:
+   `.venv/bin/python ./scripts/hkdata.py experience-log --kind negative …`
+   then `python3 ./scripts/hkdata.py log-render`.
 
 ## Step 5 (documentation) is mandatory, not optional
 
@@ -61,7 +62,7 @@ When a new dataset is discovered and verified, you MUST:
 1. `cp ./references/template.md ./references/{category}-{dataset}.md` and fill it in.
 2. Add a row to the table in `references/index.md` AND an entry under the right `### Category` heading there.
 3. Run `python3 ./scripts/hkdata.py reindex` to rebuild `references/search-index.json`.
-4. If fallback was used, append to `logs/failure-log.jsonl` and `logs/strategy-registry.jsonl`, then run `python3 ./scripts/hkdata.py log-render`.
+4. If fallback was used, record an experience (`experience-log`) and run `python3 ./scripts/hkdata.py log-render`.
 
 State "Step 5 incomplete — documentation pending" explicitly if you cannot finish; do not silently skip it.
 
@@ -82,9 +83,9 @@ Reference files are named `{prefix}-{dataset}.md`. Most prefixes match the data.
 
 Full mapping is in [`references/category-mapping.md`](references/category-mapping.md).
 
-## Conventions for the log files
+## Conventions for the rendered log views
 
-`logs/failure-log.md` and `logs/strategy-registry.md` are rendered views of the canonical JSONL sources (`logs/failure-log.jsonl` and `logs/strategy-registry.jsonl`). New entries are appended to the JSONL files, then `python3 ./scripts/hkdata.py log-render` regenerates the markdown. Both rendered files are written in **Cantonese**. Preserve that language when appending new entries. Use the existing entry format verbatim — both files declare their format at the top. Append new records above the `<!-- 新記錄請加喺上面 -->` marker.
+`logs/failure-log.md` and `logs/strategy-registry.md` are **rendered views** of the canonical experience store (`data/experiences.jsonl`): the failure log shows **negative** experiences, the strategy registry shows **positive** ones. Do not edit the markdown by hand — record an experience (`experience-log`) and run `python3 ./scripts/hkdata.py log-render`. Existing entries are partly in **Cantonese**; keep that language when adding related experiences.
 
 ## Scope boundary
 

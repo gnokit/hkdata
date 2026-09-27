@@ -1384,7 +1384,9 @@
         "Floodlight availability varies by venue (noted in Opening_hours)",
         "Update frequency: As and when new facility is added or amendment is made"
       ],
-      "fallback_search_terms": []
+      "fallback_search_terms": [
+        "site:data.gov.hk badminton lcsd facility"
+      ]
     },
     {
       "id": "hk-lcsd-facility-facility-bmtcvenue",
@@ -1500,7 +1502,9 @@
         "Court fees apply (chargeable venues)",
         "Data dictionary: https://www.lcsd.gov.hk/datagovhk/facility/facility-bmtcvenue_data_dictionary.pdf"
       ],
-      "fallback_search_terms": []
+      "fallback_search_terms": [
+        "site:data.gov.hk badminton lcsd facility"
+      ]
     },
     {
       "id": "hk-cstb-cstb_ccida-hkcinemas`\n- **URL:** https://data.gov.hk/en-data/dataset/hk-cstb-cstb_ccida-hkcinemas\n- **Provider:** Culture, Sports and Tourism Bureau (Create Hong Kong)\n- **Category:** Recreation and Culture\n- **Update Frequency:** QUARTERLY",

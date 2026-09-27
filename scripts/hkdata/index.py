@@ -5,46 +5,31 @@ import re
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
-from .logs import load_jsonl, search_records
+from . import experience
 
 REFERENCES_DIR = Path(__file__).parent.parent.parent / "references"
 INDEX_PATH = REFERENCES_DIR / "search-index.json"
 
 
-def _log_record_to_index_record(record: Dict, source: str) -> Dict:
-    """Convert a failure/strategy log record into a searchable index record."""
-    if source == "failure-log":
-        return {
-            "id": f"failure:{record['date']}:{record['task']}",
-            "title": f"[Failure] {record['task']}",
-            "category": "failure",
-            "filename": "logs/failure-log.jsonl",
-            "description": f"{record['symptom']} Root cause: {record['root_cause']}",
-            "keywords": record.get("keywords", []),
-            "endpoint": "",
-            "format": "",
-            "temporality": "",
-            "join_keys": [],
-            "last_verified": record.get("date", ""),
-            "known_quirks": [],
-            "fallback_search_terms": [],
-            "_type": "failure",
-        }
+def _experience_to_index_record(rec: Dict) -> Dict:
+    """Convert an experience card into a searchable index record."""
     return {
-        "id": f"strategy:{record['category']}:{record['topic']}",
-        "title": f"[Strategy] {record['category']} — {record['topic']}",
-        "category": "strategy",
-        "filename": "logs/strategy-registry.jsonl",
-        "description": f"{record['method']} → {record['result']}",
-        "keywords": record.get("keywords", []),
-        "endpoint": "",
+        "id": rec["id"],
+        "title": f"[{rec['kind']}] {rec['topic']}",
+        "category": rec.get("category") or rec["kind"],
+        "filename": "data/experiences.jsonl",
+        "description": f"{rec.get('method', '')} → {rec.get('outcome', '')}",
+        "keywords": _extract_keywords(" ".join([
+            rec.get("topic", ""), rec.get("method", ""), rec.get("details", ""),
+        ])),
+        "endpoint": rec.get("endpoint", ""),
         "format": "",
         "temporality": "",
         "join_keys": [],
-        "last_verified": "",
-        "known_quirks": [],
+        "last_verified": rec.get("last_verified", ""),
+        "known_quirks": rec.get("caveats", []),
         "fallback_search_terms": [],
-        "_type": "strategy",
+        "_type": rec["kind"],
     }
 
 
@@ -126,21 +111,17 @@ def _extract_keywords(text: str) -> List[str]:
 
 
 def _fallback_terms_for_dataset(dataset_id: str, title: str, category: str) -> List[str]:
-    """Find web-search fallback terms from strategy-registry that mention this dataset/topic."""
+    """Find web-search fallback terms from experiences that mention this dataset."""
     terms = []
     seen = set()
-    strategies = load_jsonl("strategy-registry")
-    for rec in strategies:
-        result = rec.get("result", "")
+    for rec in experience.load_experiences():
         method = rec.get("method", "")
-        topic = rec.get("topic", "")
-        text = f"{topic} {method} {result}".lower()
-        if dataset_id.lower() in text:
-            if "site:data.gov.hk" in method:
-                term = method.split("`")[1] if "`" in method else method
-                if term not in seen:
-                    terms.append(term)
-                    seen.add(term)
+        text = f"{rec.get('topic', '')} {method} {rec.get('outcome', '')}".lower()
+        if dataset_id.lower() in text and "site:data.gov.hk" in method:
+            term = method.split("`")[1] if "`" in method else method
+            if term not in seen:
+                terms.append(term)
+                seen.add(term)
     return terms
 
 
@@ -263,12 +244,11 @@ def search_local(query: str, top_n: int = 10, include_logs: bool = True) -> List
             scored.append((record["_type"], score, record))
 
     if include_logs:
-        for source in ("failure-log", "strategy-registry"):
-            for record in search_records(source, query.split()):
-                idx_record = _log_record_to_index_record(record, source)
-                score = score_dataset(query, idx_record)
-                if score > 0:
-                    scored.append((idx_record["_type"], score, idx_record))
+        for rec in experience.load_experiences():
+            idx_record = _experience_to_index_record(rec)
+            score = score_dataset(query, idx_record)
+            if score > 0:
+                scored.append((idx_record["_type"], score, idx_record))
 
     scored.sort(key=lambda x: (-x[1], x[2]["title"]))
     return scored[:top_n]

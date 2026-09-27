@@ -108,7 +108,7 @@ AGENTS.md                notes for agents using the skill
 scripts/hkdata/          CLI (catalog.py, vectors.py, index.py, logs.py, …)
 data/catalog/            sanitized catalog shards (committed)
 references/              curated dataset docs + registry + aliases
-logs/                    failure log and strategy registry (JSONL + rendered markdown)
+logs/                    rendered views (failure log = negative, strategy registry = positive)
 tests/                   pytest suite
 ```
 

@@ -91,7 +91,7 @@ State the temporality in the answer when it affects interpretation (e.g., "last 
 | Invalid / corrupt dataset metadata | Skip dataset, log ID, continue with next candidate |
 | All datasets failed | Abort entirely; return "No suitable dataset found on data.gov.hk" with exploration log |
 | Unexpected API schema | Report exact mismatch; do not attempt to parse |
-| API endpoint returns error | Check if auth is required; if not, document as broken endpoint in `logs/failure-log.jsonl` |
+| API endpoint returns error | Check if auth is required; if not, record a negative experience (`experience-log --kind negative`) |
 
 **Stale data rule:** If the skill falls back to cached/local data, the output MUST include a visible warning:
 ```

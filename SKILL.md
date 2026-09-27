@@ -55,7 +55,7 @@ by the agent's native web search tools, not this skill.
 |-----------|-------|-------------|
 | `SCRIPTS_PATH` | `./scripts` | CLI entry point and thin bash wrappers |
 | `REFERENCES_PATH` | `./references` | Verified dataset docs, registry, and search index |
-| `LOGS_PATH` | `./logs` | Structured failure log and strategy registry (JSONL + rendered markdown) |
+| `LOGS_PATH` | `./logs` | Rendered views of the experience store (failure log / strategy registry) |
 | `CATALOG_PATH` | `data/catalog/` (shards, committed) + `.cache/catalog/chroma/` (vectors) | Offline catalog + ChromaDB store |
 | `API_BASE_URL` | `https://data.gov.hk/en-data/api/3/action/` | CKAN API base (`en`/`tc`/`sc` locales) |
 | `SUBAGENT_MODEL` | high-reasoning model available in your agent tool | Single subagent for Steps 2–5 |
@@ -161,9 +161,7 @@ run `experience-embed` later.
 - [ ] `references/index.md` is updated
 - [ ] `references/search-index.json` is rebuilt
 - [ ] `data/experiences.jsonl` has a positive **or** negative card (`experience-log`)
-- [ ] `logs/failure-log.jsonl` is updated (if fallback used)
-- [ ] `logs/strategy-registry.jsonl` is updated (if new strategy discovered)
-- [ ] Markdown views are re-rendered with `log-render`
+- [ ] Markdown views are re-rendered with `log-render` (into `logs/failure-log.md` / `logs/strategy-registry.md`)
 - [ ] API response has no missing required fields and matches query intent
 - [ ] Internal paths in documentation point to `./`
 
@@ -218,8 +216,8 @@ python3 ./scripts/hkdata.py log-render
 | `python3 ./scripts/hkdata.py info "<id>" ...` | CKAN `package_show` metadata (Step 3) |
 | `python3 ./scripts/hkdata.py test "<url>" ...` | Test endpoint and detect format (Step 4) |
 | `python3 ./scripts/hkdata.py reindex` | Rebuild `references/search-index.json` (curated docs) |
-| `python3 ./scripts/hkdata.py log-search "<kw>" ...` | Search structured failure/strategy logs |
-| `python3 ./scripts/hkdata.py log-render` | Regenerate markdown views from JSONL |
+| `python3 ./scripts/hkdata.py log-search "<kw>" ...` | Lexical search of experiences (by kind) |
+| `python3 ./scripts/hkdata.py log-render` | Regenerate the `logs/` markdown views |
 | `bash ./scripts/hkdata-info.sh "<id>"` | Backward-compatible wrapper for `info` |
 
 ---
@@ -245,7 +243,7 @@ When Step 1 (experience) and Step 2 (`catalog-search`) both return nothing usefu
 2. If a known strategy exists → use it; otherwise web search `site:data.gov.hk <topic>`
 3. Record the outcome as an experience:
    `.venv/bin/python ./scripts/hkdata.py experience-log --kind negative …`
-   and append to the JSONL logs, then `python3 ./scripts/hkdata.py log-render`
+   then `python3 ./scripts/hkdata.py log-render`
 
 **Example:** `catalog-search "badminton"` → finds `hk-lcsd-facility-facility-bmtc` →
 `info "hk-lcsd-facility-facility-bmtc"` → Step 5 logs the positive experience so the
@@ -255,14 +253,16 @@ next identical question is answered straight from Step 1.
 
 ## Success Path Memory
 
-After every successful discovery, append the topic, working keywords, and method to `logs/strategy-registry.jsonl`, then run `log-render`.
+After every successful discovery, record the topic, working keywords and method as a
+**positive experience** (`experience-log --kind positive …`); after a dead end, record
+a **negative** one. Then run `log-render` to refresh the markdown views in `logs/`.
 
 ---
 
 ## Weekly Self-Evolution Review (Every 7 Days)
 
 **Process:**
-1. Read `data/experiences.jsonl`, `logs/failure-log.jsonl` and `logs/strategy-registry.jsonl`
+1. Read `data/experiences.jsonl` (and the rendered views in `logs/`)
 2. Identify patterns: common failure causes, effective fallback strategies,
    experiences whose `date` is stale or superseded
 3. Update `references/workflow-guides.md` and `AGENTS.md` if guidance changes
