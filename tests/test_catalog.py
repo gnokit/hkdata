@@ -77,6 +77,40 @@ def test_write_then_load_roundtrip(paths):
     assert loaded["ds-b"]["title"] == "Title ds-b"
 
 
+def test_sanitize_strips_personal_contact_fields():
+    raw = {
+        "name": "ds-a", "title": "T", "notes": "N", "url": "u",
+        "author": "A Person", "author_email": "a.person@dept.gov.hk",
+        "maintainer": "B Person", "maintainer_email": "b.person@dept.gov.hk",
+        "maintainer_phone": "1234 5678", "creator_user_id": "uuid-1",
+        "owner_org": "org-uuid", "state": "active", "private": False,
+        "organization": {"title": "Dept", "name": "dept", "id": "org-uuid"},
+        "resources": [{"format": "JSON", "url": "http://x", "is_api": True,
+                       "hash": "deadbeef", "size": "10"}],
+        "locales": {"tc": {"title": "標題", "notes": "註",
+                           "organization": {"title": "部門", "id": "x"}}},
+    }
+    clean = catalog.sanitize(raw)
+    blob = json.dumps(clean)
+    for leaked in ("a.person@dept.gov.hk", "b.person@dept.gov.hk",
+                   "maintainer_phone", "creator_user_id", "author_email",
+                   "1234 5678", "uuid-1", "org-uuid", "deadbeef"):
+        assert leaked not in blob, leaked
+    assert clean["name"] == "ds-a"
+    assert clean["organization"] == {"title": "Dept", "name": "dept"}
+    assert clean["resources"] == [{"format": "JSON", "url": "http://x", "is_api": True}]
+    assert clean["locales"]["tc"]["organization"] == {"title": "部門"}
+
+
+def test_write_shards_output_is_sanitized(paths):
+    record = _record("ds-a", title="Title")
+    record.update({"maintainer_email": "x@y.gov.hk", "maintainer_phone": "999",
+                   "creator_user_id": "uuid"})
+    catalog.write_shards({"ds-a": record}, ["ds-a"], paths)
+    text = (paths.raw_dir / "catalog-000.jsonl").read_text(encoding="utf-8")
+    assert "x@y.gov.hk" not in text and "999" not in text and "uuid" not in text
+
+
 def test_write_shards_prunes_stale(paths):
     catalog.write_shards({n: _record(n) for n in ["a", "b", "c"]}, ["a", "b", "c"],
                          paths, shard_size=2)

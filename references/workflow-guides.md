@@ -115,10 +115,12 @@ python3 ./scripts/hkdata.py catalog-sync --refresh              # re-fetch 14-da
 ```
 
 - Seed: `references/catalog-names.json` (sorted IDs, committed).
-- Raw store: `.cache/catalog/raw/catalog-NNN.jsonl` (500 datasets per shard) — the
-  `package_show` `result` object, one per line, plus `locales.{tc,sc}` text when crawled.
-- Search store: `.cache/catalog/chroma/` (ChromaDB, cosine). Rebuild it from shards
-  with `catalog-embed`; it never needs a re-crawl.
+- Shard store: `data/catalog/catalog-NNN.jsonl` (500 datasets per shard, committed) —
+  a **sanitized** `package_show` projection (title/notes/org/groups/tags/resources +
+  `locales.{tc,sc}`). Personal contact fields are stripped on write, so the shards
+  carry no maintainer emails/phones.
+- Search store: `.cache/catalog/chroma/` (ChromaDB, cosine, gitignored). Rebuild it
+  from shards with `catalog-embed`; it never needs a re-crawl.
 - Bootstrap: `catalog-sync --full` (~58 min at 2 req/s, resumable). Add `--lang en,tc`
   to also fetch Traditional Chinese metadata from the `tc-data` endpoint (a second
   ~58 min pass over the same 3,822 IDs).

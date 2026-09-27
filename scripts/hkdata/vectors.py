@@ -6,8 +6,8 @@ explicitly, so the extra ``ollama`` Python package is not required.
 
 Layout::
 
-    .cache/catalog/chroma/           ChromaDB PersistentClient directory
-    .cache/catalog/raw/*.jsonl       source documents (see hkdata.catalog)
+    .cache/catalog/chroma/           ChromaDB PersistentClient directory (gitignored)
+    data/catalog/*.jsonl             sanitized source documents (see hkdata.catalog)
     references/aliases.json          query-time abbreviation expansion
 """
 
@@ -198,7 +198,8 @@ def expand_query(query: str, aliases: Optional[Dict[str, List[str]]] = None) -> 
 
 
 def _vector_dir(paths: catalog.CatalogPaths):
-    return paths.raw_dir.parent / "chroma"
+    # Derived/regenerable -> kept out of the tracked shard directory.
+    return catalog.CACHE_DIR / "chroma"
 
 
 def have_chromadb() -> bool:

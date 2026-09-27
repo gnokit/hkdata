@@ -9,14 +9,18 @@ This module builds a complete local catalog from the reliable endpoints:
 
 Storage layout::
 
-    references/catalog-names.json          committed seed, sorted IDs
-    .cache/catalog/raw/catalog-NNN.jsonl   raw package_show results, 500/shard
-    .cache/catalog/raw/manifest.json       sync bookkeeping
+    references/catalog-names.json     committed seed, sorted IDs
+    data/catalog/catalog-NNN.jsonl    sanitized records, 500/shard (committed)
+    data/catalog/manifest.json        sync bookkeeping
 
-Search lives in :mod:`hkdata.vectors` (ChromaDB). Shards are chunked by
-*sorted* ID so the ID -> shard mapping is deterministic. Each line is the raw
-``result`` object from ``package_show`` verbatim, so the vector store can be
-rebuilt from shards without re-crawling.
+Search lives in :mod:`hkdata.vectors` (ChromaDB, under ``.cache/``). Shards are
+chunked by *sorted* ID so the ID -> shard mapping is deterministic.
+
+Each line is a **sanitized projection** of a ``package_show`` result — only the
+fields the search/embed layer needs (see :data:`STORE_FIELDS`). Personal contact
+details (author/maintainer emails and phones, ``creator_user_id``) and other CKAN
+bookkeeping are stripped by :func:`sanitize` on write, so shards are safe to
+commit and the vector store can be rebuilt without re-crawling.
 """
 
 import hashlib
@@ -37,10 +41,12 @@ from .common import USER_AGENT
 
 ROOT = Path(__file__).parent.parent.parent
 REFERENCES_DIR = ROOT / "references"
+# Shards are a sanitized projection of package_show, so they can be committed.
+RAW_DIR = ROOT / "data" / "catalog"
+# Derived, regenerable artifacts (the ChromaDB store) stay local.
 CACHE_DIR = ROOT / ".cache" / "catalog"
 
 NAMES_PATH = REFERENCES_DIR / "catalog-names.json"
-RAW_DIR = CACHE_DIR / "raw"
 
 RSS_FEED_URL = "https://data.gov.hk/filestore/feeds/data_rss_en.xml"
 SHARD_SIZE = 500
@@ -55,6 +61,17 @@ DEFAULT_LANGS = ("en",)
 # Locale fields kept from non-English package_show responses (the text-bearing
 # fields; the rest is redundant with the English record).
 _LOCALE_KEEP = ("title", "notes", "organization", "groups", "tags")
+
+# Allowlist for stored shards. Everything the search/embed layer needs, and
+# nothing that carries personal contact details (author/maintainer emails and
+# phones, creator_user_id) or other non-essential CKAN bookkeeping.
+STORE_FIELDS = (
+    "name", "title", "notes", "url", "organization", "groups", "tags",
+    "resources", "update_frequency", "isopen", "metadata_modified",
+    "license_title", "locales",
+)
+_ORG_FIELDS = ("title", "name")
+_RESOURCE_FIELDS = ("format", "name", "url", "is_api")
 
 _RSS_DATASET_RE = re.compile(r"/(?:en|tc|sc)-data/dataset/([^/]+)/resource/")
 
@@ -204,6 +221,32 @@ def _chunk(items: List[str], size: int) -> List[List[str]]:
     return [items[i:i + size] for i in range(0, len(items), size)]
 
 
+def _sanitize_locale(view: dict) -> dict:
+    out = {k: view[k] for k in _LOCALE_KEEP if k in view}
+    org = out.get("organization")
+    if isinstance(org, dict):
+        out["organization"] = {k: org.get(k) for k in _ORG_FIELDS if org.get(k)}
+    return out
+
+
+def sanitize(record: dict) -> dict:
+    """Reduce a raw ``package_show`` result to the storable, PII-free fields."""
+    out = {k: record[k] for k in STORE_FIELDS if k in record}
+    org = out.get("organization")
+    if isinstance(org, dict):
+        out["organization"] = {k: org.get(k) for k in _ORG_FIELDS if org.get(k)}
+    if "resources" in out:
+        out["resources"] = [
+            {k: r.get(k) for k in _RESOURCE_FIELDS if r.get(k) is not None}
+            for r in record.get("resources") or []
+        ]
+    locales = out.get("locales")
+    if isinstance(locales, dict):
+        out["locales"] = {loc: _sanitize_locale(view)
+                          for loc, view in locales.items() if isinstance(view, dict)}
+    return out
+
+
 def load_records(paths: CatalogPaths) -> Dict[str, dict]:
     """Load every shard into a ``name -> result`` mapping (last line wins)."""
     records: Dict[str, dict] = {}
@@ -236,7 +279,7 @@ def write_shards(records: Dict[str, dict], names: List[str], paths: CatalogPaths
         for name in chunk:
             record = records.get(name)
             if record is not None:
-                lines.append(json.dumps(record, ensure_ascii=False))
+                lines.append(json.dumps(sanitize(record), ensure_ascii=False))
         _atomic_write_text(shard_path(paths.raw_dir, index), "".join(
             line + "\n" for line in lines
         ))

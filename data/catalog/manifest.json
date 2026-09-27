@@ -1,0 +1,13 @@
+{
+ "seed_count": 3822,
+ "fetched_count": 3822,
+ "missing_count": 0,
+ "fetched_at": "2026-09-27T05:13:44Z",
+ "last_full_sync": "2026-09-27T02:43:09Z",
+ "shards": 8,
+ "shard_size": 500,
+ "langs": [
+  "en",
+  "tc"
+ ]
+}

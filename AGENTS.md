@@ -29,7 +29,7 @@ CKAN's `package_search` is **Solr-backed and covers only ~631 of the ~3,822 data
 that the DB-backed `package_list` returns. That is why the old `search` command missed
 `badminton`, `vessel`, `AQHI`, `ferry`, and Chinese keywords. It has been removed; the
 catalog is crawled once via `package_list` + `package_show` into JSONL shards
-(`.cache/catalog/raw/`) and searched through ChromaDB.
+(`data/catalog/`, sanitized PII-free) and searched through ChromaDB.
 
 If `catalog-search` returns nothing, the store is probably not built:
 1. `python3 ./scripts/hkdata.py catalog-sync --full --lang en,tc` (once, ~2 h, resumable)

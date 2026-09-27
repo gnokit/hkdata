@@ -52,7 +52,7 @@ by the agent's native web search tools, not this skill.
 | `SCRIPTS_PATH` | `./scripts` | CLI entry point and thin bash wrappers |
 | `REFERENCES_PATH` | `./references` | Verified dataset docs, registry, and search index |
 | `LOGS_PATH` | `./logs` | Structured failure log and strategy registry (JSONL + rendered markdown) |
-| `CATALOG_PATH` | `.cache/catalog/` | JSONL shards + ChromaDB vector store |
+| `CATALOG_PATH` | `data/catalog/` (shards, committed) + `.cache/catalog/chroma/` (vectors) | Offline catalog + ChromaDB store |
 | `API_BASE_URL` | `https://data.gov.hk/en-data/api/3/action/` | CKAN API base (`en`/`tc`/`sc` locales) |
 | `SUBAGENT_MODEL` | high-reasoning model available in your agent tool | Single subagent for Steps 2–5 |
 
