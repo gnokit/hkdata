@@ -62,14 +62,27 @@ by the agent's native web search tools, not this skill.
 
 ---
 
-## Step 1 — Check Verified Datasets
+## Step 1 — Check Past Experience
 
 ```bash
-python3 ./scripts/hkdata.py search-local "<user query>"
+.venv/bin/python ./scripts/hkdata.py experience-search "<user query>"
 ```
 
-If a verified dataset matches, read `references/{category}-{dataset}.md` and answer
-directly. Otherwise proceed to Step 2.
+Semantic search over past experiences — **positive** (something worked) and
+**negative** (a dead end):
+
+- **positive** → read the cited `references/...md` and follow the recipe; then Step 3/4
+  to refresh the endpoint if the data is live.
+- **negative** (`outcome: unavailable`) → the data is not on data.gov.hk; answer
+  accordingly **without re-searching**.
+- no useful hit → proceed to Step 2.
+
+> **Experiences carry a date.** They can be superseded by a newer dataset or a better
+> method, so check `date` (and `last_verified`). For live/real-time data, still run
+> Step 3–4 rather than trusting an old card.
+
+`search-local` remains available for a plain lexical lookup of the curated
+reference index, but Step 1 is the semantic experience search.
 
 ---
 
@@ -122,14 +135,32 @@ Fetches the endpoint and auto-detects JSON/XML/CSV.
 cp ./references/template.md ./references/<category>-<dataset>.md
 # fill in the reference file
 python3 ./scripts/hkdata.py reindex
+# record the experience (positive or negative) and index it
+.venv/bin/python ./scripts/hkdata.py experience-log \
+  --kind positive --topic "<short description>" \
+  --pattern "<example query>" --dataset <dataset-id> \
+  --method "<what worked>" --source references/<category>-<dataset>.md
 python3 ./scripts/hkdata.py log-render
 ```
+
+For a dead end (no dataset exists), log a **negative** experience instead:
+
+```bash
+.venv/bin/python ./scripts/hkdata.py experience-log \
+  --kind negative --topic "<what was asked>" --outcome unavailable \
+  --method "<what was searched>" --caveat "<closest proxy>"
+```
+
+`experience-log` appends to `data/experiences.jsonl` **and** indexes the card
+immediately (needs Ollama). If ChromaDB is unavailable it appends to the JSONL only —
+run `experience-embed` later.
 
 **Step 5 is a hard gate.** It is not complete until **all** of these are true:
 - [ ] Query is in scope (Hong Kong data.gov.hk data)
 - [ ] `references/{category}-{dataset}.md` exists
 - [ ] `references/index.md` is updated
 - [ ] `references/search-index.json` is rebuilt
+- [ ] `data/experiences.jsonl` has a positive **or** negative card (`experience-log`)
 - [ ] `logs/failure-log.jsonl` is updated (if fallback used)
 - [ ] `logs/strategy-registry.jsonl` is updated (if new strategy discovered)
 - [ ] Markdown views are re-rendered with `log-render`
@@ -145,8 +176,8 @@ If any item cannot be completed, state: "Step 5 incomplete — documentation pen
 Before starting Steps 2–5, create a task list with one item per step. Mark each item `in progress` before executing it and `completed` when done. If a fallback is triggered, add it as a sub-task.
 
 ```bash
-# Step 1: Check verified
-python3 ./scripts/hkdata.py search-local "<user query>"
+# Step 1: Check past experience (semantic; run from the venv)
+.venv/bin/python ./scripts/hkdata.py experience-search "<user query>"
 
 # Step 2: Search the full catalog (ChromaDB; run from the venv)
 .venv/bin/python ./scripts/hkdata.py catalog-search "<user query>"
@@ -164,6 +195,8 @@ python3 ./scripts/hkdata.py test "<url1>" "<url2>"
 # Step 5: Document
 cp ./references/template.md ./references/<category>-<dataset>.md
 python3 ./scripts/hkdata.py reindex
+.venv/bin/python ./scripts/hkdata.py experience-log --kind positive \
+  --topic "..." --dataset <dataset-id> --method "..."
 python3 ./scripts/hkdata.py log-render
 ```
 
@@ -173,7 +206,11 @@ python3 ./scripts/hkdata.py log-render
 
 | Command | Purpose |
 |---------|---------|
-| `python3 ./scripts/hkdata.py search-local "<query>"` | Search verified datasets + experience history (Step 1) |
+| `.venv/bin/python ./scripts/hkdata.py experience-search "<query>"` | Semantic search over past experiences, ± (Step 1) |
+| `.venv/bin/python ./scripts/hkdata.py experience-log --kind positive\|negative …` | Record + index an experience (Step 5) |
+| `.venv/bin/python ./scripts/hkdata.py experience-embed` | Build the experience index from `data/experiences.jsonl` |
+| `python3 ./scripts/hkdata.py experience-migrate` | Regenerate experiences from references + logs |
+| `python3 ./scripts/hkdata.py search-local "<query>"` | Lexical lookup of the curated reference index |
 | `.venv/bin/python ./scripts/hkdata.py catalog-search "<query>"` | ChromaDB search over the full catalog (Step 2) |
 | `python3 ./scripts/hkdata.py catalog-sync [--full] [--refresh] [--lang en,tc]` | Seed/crawl the offline catalog |
 | `.venv/bin/python ./scripts/hkdata.py catalog-embed [--model ...]` | Build the ChromaDB vector store (Ollama) |
@@ -189,7 +226,8 @@ python3 ./scripts/hkdata.py log-render
 
 ## Verified Datasets
 
-Verified datasets are listed in [`references/index.md`](references/index.md). Search them locally with:
+Verified datasets are listed in [`references/index.md`](references/index.md). Find them
+semantically via the experience index (Step 1), or lexically with:
 
 ```bash
 python3 ./scripts/hkdata.py search-local "<query>"
@@ -201,14 +239,17 @@ The category → filename prefix mapping is in [`references/category-mapping.md`
 
 ## Auto-Fallback Trigger
 
-When `catalog-search` returns no useful results:
+When Step 1 (experience) and Step 2 (`catalog-search`) both return nothing useful:
 
 1. Search structured logs: `python3 ./scripts/hkdata.py log-search "<topic>" "0 results"`
 2. If a known strategy exists → use it; otherwise web search `site:data.gov.hk <topic>`
-3. Record outcome: append to JSONL, then `python3 ./scripts/hkdata.py log-render`
+3. Record the outcome as an experience:
+   `.venv/bin/python ./scripts/hkdata.py experience-log --kind negative …`
+   and append to the JSONL logs, then `python3 ./scripts/hkdata.py log-render`
 
 **Example:** `catalog-search "badminton"` → finds `hk-lcsd-facility-facility-bmtc` →
-`info "hk-lcsd-facility-facility-bmtc"`.
+`info "hk-lcsd-facility-facility-bmtc"` → Step 5 logs the positive experience so the
+next identical question is answered straight from Step 1.
 
 ---
 
@@ -221,10 +262,11 @@ After every successful discovery, append the topic, working keywords, and method
 ## Weekly Self-Evolution Review (Every 7 Days)
 
 **Process:**
-1. Read `logs/failure-log.jsonl` and `logs/strategy-registry.jsonl` (or rendered `.md` views)
-2. Identify patterns: common failure causes, effective fallback strategies
+1. Read `data/experiences.jsonl`, `logs/failure-log.jsonl` and `logs/strategy-registry.jsonl`
+2. Identify patterns: common failure causes, effective fallback strategies,
+   experiences whose `date` is stale or superseded
 3. Update `references/workflow-guides.md` and `AGENTS.md` if guidance changes
-4. Archive old/deprecated entries
+4. Archive/dedupe experiences, then `experience-migrate` + `experience-embed`
 5. Run `python3 ./scripts/hkdata.py log-render` after cleanup
 
 **Trigger:** Spawn a single subagent with task "hkdata weekly self-evolution review"

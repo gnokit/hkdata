@@ -3,12 +3,14 @@
 import argparse
 import json
 import sys
+import time
 import urllib.error
 import urllib.request
 from typing import List
 
 from . import __version__
 from . import catalog
+from . import experience
 from . import vectors
 from .common import USER_AGENT
 from .inspect import info, info_multiple
@@ -201,6 +203,76 @@ def cmd_catalog_search(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_experience_search(args: argparse.Namespace) -> int:
+    if not _require_chromadb():
+        return 1
+    query = " ".join(args.keywords)
+    try:
+        results = experience.search(query, top_n=args.top_n, kind=args.kind)
+    except RuntimeError as exc:
+        _eprint(f"Error: {exc}")
+        return 1
+    if args.json:
+        print(json.dumps(results, ensure_ascii=False, indent=2))
+        return 0
+    if not results:
+        print(f"No experience matches for: {query}")
+        return 0
+    for item in results:
+        datasets = ", ".join(item["datasets"]) or "-"
+        print(f"{item['score']:.4f} | [{item['kind']}] {item['topic']} | "
+              f"{datasets} | {item['date'] or '-'} | {item['source']}")
+    return 0
+
+
+def cmd_experience_log(args: argparse.Namespace) -> int:
+    exp = {
+        "kind": args.kind,
+        "topic": args.topic,
+        "query_patterns": args.pattern or [],
+        "category": args.category or "",
+        "datasets": args.dataset or [],
+        "method": args.method or "",
+        "endpoint": args.endpoint or "",
+        "outcome": args.outcome or "",
+        "caveats": args.caveat or [],
+        "source": args.source or "manual",
+        "date": args.date,
+        "last_verified": args.date,
+    }
+    upsert = vectors.have_chromadb()
+    try:
+        record = experience.append_experience(exp, upsert=upsert)
+    except RuntimeError as exc:
+        _eprint(f"Error: {exc}")
+        return 1
+    if not upsert:
+        _eprint("ChromaDB not installed — appended to JSONL only; "
+                "run 'experience-embed' later.")
+    print(record["id"])
+    return 0
+
+
+def cmd_experience_embed(args: argparse.Namespace) -> int:
+    if not _require_chromadb():
+        return 1
+    try:
+        result = experience.embed_experiences(
+            model=args.model, url=args.url, batch=args.batch)
+    except RuntimeError as exc:
+        _eprint(f"Error: {exc}")
+        return 1
+    _eprint(f"Experience store ready: {result['total']} cards.")
+    return 0
+
+
+def cmd_experience_migrate(args: argparse.Namespace) -> int:
+    result = experience.migrate()
+    _eprint(f"Experiences: {result['positive']} positive, "
+            f"{result['negative']} negative.")
+    return 0
+
+
 def cmd_catalog_status(args: argparse.Namespace) -> int:
     paths = catalog.default_paths()
     data = catalog.status(paths)
@@ -216,6 +288,7 @@ def cmd_catalog_status(args: argparse.Namespace) -> int:
     print(f"Shards:        {data['shards']} ({data['shard_bytes'] / 1e6:.1f} MB)")
     if vec.get("available"):
         print(f"Vector store:  {vec.get('count', 0)} datasets")
+        print(f"Experiences:   {experience.count(paths)} cards")
     else:
         print("Vector store:  unavailable (install chromadb in the venv)")
     print(f"Last full sync: {data['last_full_sync'] or '-'}")
@@ -303,6 +376,41 @@ def build_parser() -> argparse.ArgumentParser:
         "catalog-status", help="Show offline catalog coverage")
     catalog_status_parser.add_argument("--json", action="store_true", help="JSON output")
     catalog_status_parser.set_defaults(func=cmd_catalog_status)
+
+    exp_search = subparsers.add_parser(
+        "experience-search", help="Semantic search over past experiences (positive/negative)")
+    exp_search.add_argument("keywords", nargs="+", help="Natural-language query")
+    exp_search.add_argument("--top-n", type=int, default=5, help="Max results (default: 5)")
+    exp_search.add_argument("--kind", choices=["positive", "negative"],
+                            help="Only return this kind of experience")
+    exp_search.add_argument("--json", action="store_true", help="JSON output")
+    exp_search.set_defaults(func=cmd_experience_search)
+
+    exp_log = subparsers.add_parser(
+        "experience-log", help="Record a new experience and index it")
+    exp_log.add_argument("--kind", choices=["positive", "negative"], default="positive")
+    exp_log.add_argument("--topic", required=True, help="Short description")
+    exp_log.add_argument("--pattern", action="append", help="Example query (repeatable)")
+    exp_log.add_argument("--category", help="Category / component")
+    exp_log.add_argument("--dataset", action="append", help="Dataset ID (repeatable)")
+    exp_log.add_argument("--method", help="What worked (or the dead end)")
+    exp_log.add_argument("--endpoint", help="Endpoint URL")
+    exp_log.add_argument("--outcome", help="Short verdict, e.g. located / unavailable")
+    exp_log.add_argument("--caveat", action="append", help="Caveat (repeatable)")
+    exp_log.add_argument("--source", help="Where this came from (default: manual)")
+    exp_log.add_argument("--date", default=time.strftime("%Y-%m-%d"), help="Date (YYYY-MM-DD)")
+    exp_log.set_defaults(func=cmd_experience_log)
+
+    exp_embed = subparsers.add_parser(
+        "experience-embed", help="Build the ChromaDB experience index")
+    exp_embed.add_argument("--model", default=vectors.DEFAULT_MODEL)
+    exp_embed.add_argument("--url", default=vectors.DEFAULT_OLLAMA_URL)
+    exp_embed.add_argument("--batch", type=int, default=vectors.EMBED_BATCH)
+    exp_embed.set_defaults(func=cmd_experience_embed)
+
+    exp_migrate = subparsers.add_parser(
+        "experience-migrate", help="Seed experiences.jsonl from references and logs")
+    exp_migrate.set_defaults(func=cmd_experience_migrate)
 
     return parser
 

@@ -59,25 +59,28 @@ Shards:        8 (16.0 MB)
 Vector store:  unavailable
 ```
 
-`Vector store: unavailable` at this point is normal — it is built next.
+`Vector store: unavailable` at this point is normal — it is built next. (Run with
+`.venv/bin/python` to see the dataset and experience counts.)
 
-**5. Build the vector store**
+**5. Build the vector stores**
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py catalog-embed
+.venv/bin/python ./scripts/hkdata.py catalog-embed      # 3,822 datasets (~10 min)
+.venv/bin/python ./scripts/hkdata.py experience-embed   # ~120 experiences (seconds)
 ```
 
-This embeds all 3,822 datasets (~10 minutes on CPU). It is incremental: re-running
-only re-embeds datasets whose content changed.
+Both are incremental: re-running only re-embeds content that changed. The committed
+shards in `data/catalog/` and `data/experiences.jsonl` mean no crawl is needed.
 
 **6. Smoke test**
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py catalog-search "badminton courts" --top-n 3
+.venv/bin/python ./scripts/hkdata.py experience-search "gym room Cheung Sha Wan" --top-n 3
 .venv/bin/python ./scripts/hkdata.py catalog-search "康文署羽毛球場" --top-n 3
 ```
 
-Both should return LCSD badminton datasets. Setup is complete.
+Step 1 should surface past experiences; Step 2 should return LCSD badminton datasets.
+Setup is complete.
 
 ---
 
@@ -88,9 +91,9 @@ is stdlib and runs with plain `python3`.
 
 | Run from `.venv/bin/python` | Run with `python3` |
 |---|---|
-| `catalog-search` | `catalog-sync` |
-| `catalog-embed` | `info`, `test` |
-| | `catalog-status`, `search-local`, `log-*` |
+| `experience-search`, `experience-log`, `experience-embed` | `catalog-sync` |
+| `catalog-search`, `catalog-embed` | `info`, `test` |
+| | `catalog-status`, `experience-migrate`, `search-local`, `log-*` |
 
 ---
 

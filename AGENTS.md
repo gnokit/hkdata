@@ -9,7 +9,10 @@ First-time setup (venv, Ollama model, vector store) is in [`SETUP.md`](SETUP.md)
 Always invoke from the skill root via `bash ./scripts/...sh` or `python3 ./scripts/hkdata.py <subcommand>` — never `./scripts/...sh` directly, never from another cwd. All paths in `SKILL.md` and the reference docs are `./`-relative.
 
 ```bash
-# search (ChromaDB) — must run from the venv
+# step 1: past experience (ChromaDB) — must run from the venv
+.venv/bin/python ./scripts/hkdata.py experience-search "<keyword>" [--kind positive|negative]
+.venv/bin/python ./scripts/hkdata.py experience-log --kind positive --topic "..." --dataset <id> --method "..."
+# step 2: the full catalog
 .venv/bin/python ./scripts/hkdata.py catalog-search "<keyword>"
 # catalog maintenance (stdlib python3 is fine)
 python3 ./scripts/hkdata.py catalog-sync [--full] [--lang en,tc]
@@ -33,10 +36,17 @@ that the DB-backed `package_list` returns. That is why the old `search` command 
 catalog is crawled once via `package_list` + `package_show` into JSONL shards
 (`data/catalog/`, sanitized PII-free) and searched through ChromaDB.
 
-If `catalog-search` returns nothing, the store is probably not built:
+Search in two steps: `experience-search` (past positive/negative lessons, Step 1) then
+`catalog-search` (the catalog, Step 2). Experiences are dated and can be superseded —
+check the date and re-test live endpoints.
+
+If a store is empty, it is probably not built:
 1. `python3 ./scripts/hkdata.py catalog-sync --full --lang en,tc` (once, ~2 h, resumable)
-2. `.venv/bin/python ./scripts/hkdata.py catalog-embed`
+2. `.venv/bin/python ./scripts/hkdata.py catalog-embed && .venv/bin/python ./scripts/hkdata.py experience-embed`
 3. Then search with `.venv/bin/python ./scripts/hkdata.py catalog-search "<topic>"`
+
+After a successful (or failed) discovery, record it:
+`.venv/bin/python ./scripts/hkdata.py experience-log --kind positive|negative …`
 
 Otherwise fall back to:
 1. `python3 ./scripts/hkdata.py log-search "<topic>" "0 results"` — recorded workarounds.

@@ -20,16 +20,22 @@ data/catalog/*.jsonl               8 shards, 500 datasets each, PII-free
         │
 catalog-embed                      embed with a local Ollama model
         ▼
-.cache/catalog/chroma/             ChromaDB vector store (39 MB, gitignored)
-        │
-catalog-search "<query>"           dense + keyword retrieval, RRF-fused
-        ▼
-references/*.md                    curated, tested per-dataset docs (endpoints, quirks)
+.cache/catalog/chroma/             ChromaDB stores (gitignored)
+   ├── hkdata_datasets             "what datasets exist"
+   └── hkdata_experiences          "how to answer this question"  (± lessons)
 ```
+
+The agent workflow in [`SKILL.md`](SKILL.md) is:
+
+1. **`experience-search`** — semantic lookup of past **positive and negative** experiences. A hit short-circuits the search; a negative hit ("not on data.gov.hk") avoids re-searching.
+2. **`catalog-search`** — semantic + keyword search over all 3,822 datasets.
+3. **`info`** → **`test`** — inspect the dataset and test its endpoint.
+4. **`experience-log`** — record the outcome so the next similar question hits at step 1.
 
 - **Bilingual:** en + Traditional Chinese metadata (`--lang en,tc`), so `康文署` resolves to `康樂及文化事務署`.
 - **Hybrid retrieval:** ChromaDB dense KNN fused with a case-insensitive keyword pass (`references/aliases.json` expands common HK abbreviations).
-- **Experience memory:** `logs/` records failed searches and the strategies that worked, so the skill improves over time.
+- **Experience memory:** `data/experiences.jsonl` (committed) holds ~120 positive/negative cards derived from the curated references and logs, each dated so stale lessons are visible.
+- **No finished answers are embedded** — cards point to datasets and methods; the agent still queries the live endpoint.
 
 ## Requirements
 
@@ -60,7 +66,10 @@ To refresh from source: `catalog-sync --full --lang en,tc` (~2 h, resumable) or 
 ## Usage
 
 ```bash
-# Search (ChromaDB)
+# Step 1 — past experience (positive + negative)
+.venv/bin/python ./scripts/hkdata.py experience-search "gym room Cheung Sha Wan"
+
+# Step 2 — the full catalog
 .venv/bin/python ./scripts/hkdata.py catalog-search "badminton courts"
 .venv/bin/python ./scripts/hkdata.py catalog-search "康文署羽毛球場" --top-n 5
 
@@ -77,7 +86,10 @@ python3 ./scripts/hkdata.py catalog-status
 
 | Command | Purpose |
 |---|---|
-| `catalog-search "<query>"` | ChromaDB hybrid search over the full catalog |
+| `experience-search "<query>"` | Semantic search over past experiences (±) — Step 1 |
+| `experience-log --kind positive\|negative …` | Record + index an experience |
+| `experience-embed` / `experience-migrate` | Build / regenerate the experience index |
+| `catalog-search "<query>"` | ChromaDB hybrid search over the full catalog — Step 2 |
 | `catalog-sync [--full] [--refresh] [--lang en,tc]` | Seed/crawl/refresh the offline catalog |
 | `catalog-embed` | Build the ChromaDB vector store |
 | `catalog-status` | Coverage and vector-store report |
