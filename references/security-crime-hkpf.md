@@ -35,10 +35,10 @@ No query parameters. Files are static CSV downloads.
 
 ```bash
 # Overall + violent crime (UTF-8, monthly)
-python3 ./scripts/hkdata.py test "https://www.police.gov.hk/info/doc/crime_details_overall.csv"
+bash ./hk.sh test "https://www.police.gov.hk/info/doc/crime_details_overall.csv"
 
 # Detailed annual crime (Big5 encoded)
-python3 ./scripts/hkdata.py test "https://www.police.gov.hk/info/doc/crime_details.csv"
+bash ./hk.sh test "https://www.police.gov.hk/info/doc/crime_details.csv"
 ```
 
 ## Related Resources

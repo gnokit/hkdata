@@ -58,7 +58,7 @@ ollama pull qwen3-embedding:0.6b
 The catalog shards (`data/catalog/`) are committed, so a fresh clone only needs to build the vector store:
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py catalog-embed      # ~10 min for 3,822 datasets
+bash ./hk.sh catalog-embed      # ~10 min for 3,822 datasets
 ```
 
 To refresh from source: `catalog-sync --full --lang en,tc` (~2 h, resumable) or `catalog-sync --refresh` (14-day RSS delta, ~2 min).
@@ -67,19 +67,19 @@ To refresh from source: `catalog-sync --full --lang en,tc` (~2 h, resumable) or 
 
 ```bash
 # Step 1 — past experience (positive + negative)
-.venv/bin/python ./scripts/hkdata.py experience-search "gym room Cheung Sha Wan"
+bash ./hk.sh experience-search "gym room Cheung Sha Wan"
 
 # Step 2 — the full catalog
-.venv/bin/python ./scripts/hkdata.py catalog-search "badminton courts"
-.venv/bin/python ./scripts/hkdata.py catalog-search "康文署羽毛球場" --top-n 5
+bash ./hk.sh catalog-search "badminton courts"
+bash ./hk.sh catalog-search "康文署羽毛球場" --top-n 5
 
 # Inspect a dataset and test its endpoint
-python3 ./scripts/hkdata.py info hk-lcsd-facility-facility-fit
-python3 ./scripts/hkdata.py test "http://www.lcsd.gov.hk/datagovhk/facility/facility-fitrm.json"
+bash ./hk.sh info hk-lcsd-facility-facility-fit
+bash ./hk.sh test "http://www.lcsd.gov.hk/datagovhk/facility/facility-fitrm.json"
 
 # Curated verified datasets + catalog coverage
-python3 ./scripts/hkdata.py search-local "enrolment"
-python3 ./scripts/hkdata.py catalog-status
+bash ./hk.sh search-local "enrolment"
+bash ./hk.sh catalog-status
 ```
 
 ### Commands
@@ -98,20 +98,22 @@ python3 ./scripts/hkdata.py catalog-status
 | `search-local "<query>"` | Search the curated reference docs |
 | `reindex` | Rebuild `references/search-index.json` from the curated docs |
 | `log-search` / `log-render` | Query/regenerate the failure & strategy logs |
+| `bash ./hk.sh "<subcommand>"` | Single entry point — picks the venv interpreter when present, else `python3` |
 | `bash ./scripts/hkdata-info.sh "<id>"` | Backward-compatible wrapper for `info` |
 
-Run search and embed commands from `.venv` (they need `chromadb`); `catalog-sync`, `info` and `test` work with plain `python3`.
+All commands run through `bash ./hk.sh`, which picks the `.venv` interpreter automatically when chromadb is needed and falls back to plain `python3` otherwise — no need to choose the interpreter yourself.
 
 ## Layout
 
 ```
-SKILL.md                 discovery workflow (the entrypoint)
-AGENTS.md                notes for agents using the skill
-scripts/hkdata/          CLI (catalog.py, vectors.py, index.py, logs.py, …)
-data/catalog/            sanitized catalog shards (committed)
-references/              curated dataset docs + registry + aliases
-logs/                    rendered views (failure log = negative, strategy registry = positive)
-tests/                   pytest suite
+hk.sh                     single CLI entry point (picks venv or python3)
+SKILL.md                  discovery workflow (the entrypoint)
+AGENTS.md                 notes for agents using the skill
+scripts/hkdata/           CLI (catalog.py, vectors.py, index.py, logs.py, …)
+data/catalog/             sanitized catalog shards (committed)
+references/               curated dataset docs + registry + aliases
+logs/                     rendered views (failure log = negative, strategy registry = positive)
+tests/                    pytest suite
 ```
 
 ## Data source & attribution

@@ -35,7 +35,7 @@ No query parameters. Files are static CSV downloads.
 
 ```bash
 # Monthly occupancy rate
-python3 ./scripts/hkdata.py test \
+bash ./hk.sh test \
   "https://www.tourism.gov.hk/datagovhk/hotelroomoccupancy/hotel_room_occupancy_rate_monthly_en.csv"
 ```
 

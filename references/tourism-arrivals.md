@@ -39,7 +39,7 @@ https://www.censtatd.gov.hk/en/web_table.html?id=650-80001&full_series=1&downloa
 
 ```bash
 # Full historical series JSON
-python3 ./scripts/hkdata.py test \
+bash ./hk.sh test \
   "https://www.censtatd.gov.hk/api/get.php?id=650-80001&lang=en&full_series=1"
 ```
 

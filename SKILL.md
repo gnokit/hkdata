@@ -24,13 +24,13 @@ web search tools, not this skill.
 
 Before Steps 2–5, create a task list with one item per step; mark each `in progress`
 before executing and `completed` when done, adding a sub-task for any fallback.
-First run? Follow [`SETUP.md`](SETUP.md) once. Search commands need
-`.venv/bin/python`; everything else is plain `python3`.
+First run? Follow [`SETUP.md`](SETUP.md) once. All commands go through
+`bash ./hk.sh`, which picks the venv interpreter when present, else `python3`.
 
 ## Step 1 — Check Past Experience
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py experience-search "<user query>"
+bash ./hk.sh experience-search "<user query>"
 ```
 
 Semantic search over past experiences — **positive** (a working recipe) and
@@ -48,7 +48,7 @@ for live data.
 ## Step 2 — Search the Full Catalog
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py catalog-search "<user query>"
+bash ./hk.sh catalog-search "<user query>"
 ```
 
 ChromaDB search over all **3,822** datasets (dense multilingual embeddings fused with
@@ -60,25 +60,25 @@ it once — `catalog-sync --full --lang en,tc` then `catalog-embed`
 ## Steps 3–4 — Inspect and Test the Endpoint
 
 ```bash
-python3 ./scripts/hkdata.py info "<dataset-id>" ["<id2>" ...]     # CKAN package_show: metadata, resources, endpoint URLs
-python3 ./scripts/hkdata.py test "<resource-url>" ["<url2>" ...]  # fetch the endpoint; auto-detects JSON/XML/CSV
+bash ./hk.sh info "<dataset-id>" ["<id2>" ...]     # CKAN package_show: metadata, resources, endpoint URLs
+bash ./hk.sh test "<resource-url>" ["<url2>" ...]  # fetch the endpoint; auto-detects JSON/XML/CSV
 ```
 
 ## Step 5 — Document New Dataset (Mandatory)
 
 ```bash
 cp ./references/template.md ./references/<category>-<dataset>.md   # then fill it in
-python3 ./scripts/hkdata.py reindex
-.venv/bin/python ./scripts/hkdata.py experience-log --kind positive \
+bash ./hk.sh reindex
+bash ./hk.sh experience-log --kind positive \
   --topic "<short description>" --pattern "<example query>" --dataset <dataset-id> \
   --method "<what worked>" --source references/<category>-<dataset>.md
-python3 ./scripts/hkdata.py log-render
+bash ./hk.sh log-render
 ```
 
 For a dead end (no dataset exists), log a **negative** experience instead:
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py experience-log --kind negative \
+bash ./hk.sh experience-log --kind negative \
   --topic "<what was asked>" --outcome unavailable --method "<what was searched>" \
   --caveat "<closest proxy>"
 ```
@@ -103,11 +103,11 @@ and list which items failed.
 
 | Command | Purpose |
 |---------|---------|
-| `.venv/bin/python ./scripts/hkdata.py experience-search "<query>"` | Semantic search over past experiences, ± (Step 1) |
-| `.venv/bin/python ./scripts/hkdata.py experience-log --kind positive\|negative …` | Record + index an experience (Step 5) |
-| `.venv/bin/python ./scripts/hkdata.py catalog-search "<query>"` | ChromaDB search over the full catalog (Step 2) |
-| `python3 ./scripts/hkdata.py info "<id>" …` | CKAN `package_show` metadata (Steps 3–4) |
-| `python3 ./scripts/hkdata.py test "<url>" …` | Test endpoint and detect format (Steps 3–4) |
+| `bash ./hk.sh experience-search "<query>"` | Semantic search over past experiences, ± (Step 1) |
+| `bash ./hk.sh experience-log --kind positive\|negative …` | Record + index an experience (Step 5) |
+| `bash ./hk.sh catalog-search "<query>"` | ChromaDB search over the full catalog (Step 2) |
+| `bash ./hk.sh info "<id>" …` | CKAN `package_show` metadata (Steps 3–4) |
+| `bash ./hk.sh test "<url>" …` | Test endpoint and detect format (Steps 3–4) |
 
 The full CLI list (build, refresh, `reindex`, `log-*`) is in [`README.md`](README.md).
 
@@ -115,11 +115,11 @@ The full CLI list (build, refresh, `reindex`, `log-*`) is in [`README.md`](READM
 
 When Step 1 (experience) and Step 2 (`catalog-search`) both return nothing useful:
 
-1. Search structured logs: `python3 ./scripts/hkdata.py log-search "<topic>" "0 results"`
+1. Search structured logs: `bash ./hk.sh log-search "<topic>" "0 results"`
 2. If a known strategy exists → use it; otherwise web search `site:data.gov.hk <topic>`
 3. Record the outcome as an experience:
-   `.venv/bin/python ./scripts/hkdata.py experience-log --kind negative …`
-   then `python3 ./scripts/hkdata.py log-render`
+   `bash ./hk.sh experience-log --kind negative …`
+   then `bash ./hk.sh log-render`
 
 If Steps 3–4 reveal no dataset answers the query, your answer MUST:
 

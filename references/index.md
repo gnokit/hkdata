@@ -111,7 +111,7 @@ Master index of all verified Hong Kong open data APIs.
 ## Finding New Datasets
 
 1. Use discovery workflow in [SKILL.md](../SKILL.md)
-2. Search: `.venv/bin/python ./scripts/hkdata.py catalog-search "keyword"`
+2. Search: `bash ./hk.sh catalog-search "keyword"`
 3. Inspect: `bash ./scripts/hkdata-info.sh "dataset-id"`
 
 > **Maintenance note:** Keep the `Verified Datasets` table and the `By Category` section in sync. When adding a dataset, update **both**.
@@ -121,5 +121,5 @@ Master index of all verified Hong Kong open data APIs.
 1. Copy [template.md](template.md)
 2. Rename to `{category}-{dataset}.md`
 3. Update this index (`Verified Datasets` table **and** `By Category` section)
-4. Run `python3 ./scripts/hkdata.py reindex` to rebuild `search-index.json`
-5. If fallback was used, record an experience (`experience-log`) and run `python3 ./scripts/hkdata.py log-render`
+4. Run `bash ./hk.sh reindex` to rebuild `search-index.json`
+5. If fallback was used, record an experience (`experience-log`) and run `bash ./hk.sh log-render`

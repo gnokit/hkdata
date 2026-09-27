@@ -119,11 +119,11 @@ datasets** that the DB-backed `package_list` returns, so it is no longer used. T
 catalog is crawled once and searched through ChromaDB:
 
 ```bash
-python3 ./scripts/hkdata.py catalog-sync --full --lang en,tc   # crawl (resumable)
-.venv/bin/python ./scripts/hkdata.py catalog-embed              # embed into ChromaDB
-.venv/bin/python ./scripts/hkdata.py catalog-search "康文署羽毛球場"
-python3 ./scripts/hkdata.py catalog-status                      # coverage report
-python3 ./scripts/hkdata.py catalog-sync --refresh              # re-fetch 14-day RSS changes
+bash ./hk.sh catalog-sync --full --lang en,tc   # crawl (resumable)
+bash ./hk.sh catalog-embed              # embed into ChromaDB
+bash ./hk.sh catalog-search "康文署羽毛球場"
+bash ./hk.sh catalog-status                      # coverage report
+bash ./hk.sh catalog-sync --refresh              # re-fetch 14-day RSS changes
 ```
 
 - Seed: `references/catalog-names.json` (sorted IDs, committed).
@@ -161,7 +161,7 @@ datasets; aliases and fusion changes need no re-embedding.
 | Symptom | Root Cause | Permanent Fix |
 |---------|------------|---------------|
 | `catalog-search` returns nothing at all | Vector store not built, or catalog not crawled | `catalog-sync --full --lang en,tc` → `catalog-embed` → `catalog-search` |
-| `catalog-search` says "ChromaDB is not installed" | Search runs only from the venv | `.venv/bin/python ./scripts/hkdata.py catalog-search "…"` |
+| `catalog-search` says "ChromaDB is not installed" | chromadb is missing from the venv | `.venv/bin/pip install -r requirements-vectors.txt`, then retry |
 | Chinese abbreviation (e.g. `康文署`) not found | Abbreviations are coined truncations; the full form (`康樂及文化事務署`) is in the tc metadata | Dense embeddings bridge it (cos ≈ 0.79) and `aliases.json` expands it deterministically — add a mapping if one is missing |
 | A dataset the CKAN API used to return is now missing | CKAN `package_search` was retired (Solr covered only ~631/3,822) | Use `catalog-search`, which covers the full catalog |
 | Subagent fails to create reference file | Permission issue or wrong path | Verify references are written to `./references` |

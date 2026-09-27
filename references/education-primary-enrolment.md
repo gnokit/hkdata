@@ -35,11 +35,11 @@ No query parameters. Files are static CSV downloads hosted on edb.gov.hk.
 
 ```bash
 # Enrolment by district and grade
-python3 ./scripts/hkdata.py test \
+bash ./hk.sh test \
   "http://www.edb.gov.hk/attachment/en/about-edb/publications-stat/figures/tab0307_en.csv"
 
 # Territory-wide accommodation / enrolment by grade
-python3 ./scripts/hkdata.py test \
+bash ./hk.sh test \
   "http://www.edb.gov.hk/attachment/en/about-edb/publications-stat/figures/tab0301_en.csv"
 ```
 

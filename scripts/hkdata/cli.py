@@ -26,9 +26,11 @@ def _eprint(message: str) -> None:
 def _require_chromadb() -> bool:
     if vectors.have_chromadb():
         return True
-    _eprint("ChromaDB is not installed. Run vector commands with the venv, e.g.:")
-    _eprint("  .venv/bin/python ./scripts/hkdata.py catalog-embed")
-    _eprint("  .venv/bin/python ./scripts/hkdata.py catalog-search \"<query>\"")
+    _eprint("ChromaDB is not installed. Create the venv first (see SETUP.md), e.g.:")
+    _eprint("  .venv/bin/pip install -r requirements-vectors.txt")
+    _eprint("then run vector commands via the wrapper, e.g.:")
+    _eprint("  bash ./hk.sh catalog-embed")
+    _eprint("  bash ./hk.sh catalog-search \"<query>\"")
     return False
 
 

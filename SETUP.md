@@ -45,7 +45,7 @@ ollama pull qwen3-embedding:0.6b
 **4. Check the catalog is present**
 
 ```bash
-python3 ./scripts/hkdata.py catalog-status
+bash ./hk.sh catalog-status
 ```
 
 Expected:
@@ -60,13 +60,14 @@ Vector store:  unavailable
 ```
 
 `Vector store: unavailable` at this point is normal — it is built next. (Run with
-`.venv/bin/python` to see the dataset and experience counts.)
+`bash ./hk.sh catalog-status` again after step 5 to see the dataset and experience
+counts.)
 
 **5. Build the vector stores**
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py catalog-embed      # 3,822 datasets (~10 min)
-.venv/bin/python ./scripts/hkdata.py experience-embed   # ~120 experiences (seconds)
+bash ./hk.sh catalog-embed      # 3,822 datasets (~10 min)
+bash ./hk.sh experience-embed   # ~120 experiences (seconds)
 ```
 
 Both are incremental: re-running only re-embeds content that changed. The committed
@@ -75,8 +76,8 @@ shards in `data/catalog/` and `data/experiences.jsonl` mean no crawl is needed.
 **6. Smoke test**
 
 ```bash
-.venv/bin/python ./scripts/hkdata.py experience-search "gym room Cheung Sha Wan" --top-n 3
-.venv/bin/python ./scripts/hkdata.py catalog-search "康文署羽毛球場" --top-n 3
+bash ./hk.sh experience-search "gym room Cheung Sha Wan" --top-n 3
+bash ./hk.sh catalog-search "康文署羽毛球場" --top-n 3
 ```
 
 Step 1 should surface past experiences; Step 2 should return LCSD badminton datasets.
@@ -84,16 +85,11 @@ Setup is complete.
 
 ---
 
-## Which Python runs what
+## Which interpreter runs what
 
-Search and embed need `chromadb`, so they must run from the venv. Everything else
-is stdlib and runs with plain `python3`.
-
-| Run from `.venv/bin/python` | Run with `python3` |
-|---|---|
-| `experience-search`, `experience-log`, `experience-embed` | `catalog-sync` |
-| `catalog-search`, `catalog-embed` | `info`, `test` |
-| | `catalog-status`, `experience-migrate`, `search-local`, `log-*` |
+Every command in this guide goes through `bash ./hk.sh`: it picks
+`.venv/bin/python` when the venv exists (search and embed need `chromadb` from
+there), and falls back to `python3` otherwise. You never need to choose.
 
 ---
 
@@ -102,9 +98,9 @@ is stdlib and runs with plain `python3`.
 The committed shards are a snapshot. To update:
 
 ```bash
-python3 ./scripts/hkdata.py catalog-sync --refresh            # 14-day RSS delta, ~2 min
-python3 ./scripts/hkdata.py catalog-sync --full --lang en,tc  # full re-crawl, ~2 h, resumable
-.venv/bin/python ./scripts/hkdata.py catalog-embed            # re-embed only what changed
+bash ./hk.sh catalog-sync --refresh            # 14-day RSS delta, ~2 min
+bash ./hk.sh catalog-sync --full --lang en,tc  # full re-crawl, ~2 h, resumable
+bash ./hk.sh catalog-embed            # re-embed only what changed
 ```
 
 `catalog-sync` writes sanitized, PII-free shards to `data/catalog/`. The ChromaDB
@@ -117,9 +113,9 @@ any time.
 
 | Symptom | Fix |
 |---|---|
-| `Vector store: unavailable` | You are running with plain `python3`, which has no `chromadb`. Use `.venv/bin/python ./scripts/hkdata.py catalog-status`. |
+| `Vector store: unavailable` | You are running with plain `python3`, which has no `chromadb`. Use `bash ./hk.sh catalog-status`. |
 | `ChromaDB is not installed` | `.venv/bin/pip install -r requirements-vectors.txt` |
 | `Ollama embedding failed` | The Ollama server is not running (`ollama serve`) or the model is missing (`ollama pull qwen3-embedding:0.6b`). |
-| `Vector store is empty` | Run `.venv/bin/python ./scripts/hkdata.py catalog-embed`. |
+| `Vector store is empty` | Run `bash ./hk.sh catalog-embed`. |
 | `catalog-search` returns nothing useful | Confirm `catalog-status` shows `Vector store: 3822 datasets`; then try broader terms or add an abbreviation to `references/aliases.json`. |
 | Tests fail | `.venv/bin/python -m pytest tests/ -q` — the suite is stdlib-only and should pass without Ollama. |

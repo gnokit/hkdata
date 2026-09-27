@@ -1,2 +1,3 @@
 #!/bin/bash
-exec python3 "$(dirname "$0")/hkdata.py" info "$@"
+# Backward-compatible wrapper for `info`. Delegates to the single hk.sh entry point.
+exec bash "$(dirname "$0")/../hk.sh" info "$@"
