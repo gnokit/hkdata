@@ -6,7 +6,7 @@ This is an AI-agent **skill** directory, not an application. There is no build, 
 
 First-time setup (venv, Ollama model, vector store) is in [`SETUP.md`](SETUP.md).
 
-Always invoke from the skill root via `bash ./hk.sh <subcommand>` — the wrapper picks the venv interpreter (needed by search/embed commands, which require `chromadb`) and falls back to `python3` otherwise. Never run `./hk.sh` directly, never from another cwd. All paths in `SKILL.md` and the reference docs are `./`-relative.
+Always invoke from the skill root via `bash ./hk.sh <subcommand>` — the wrapper picks the venv interpreter (needed by search/embed commands, which require `chromadb`) and falls back to `python3` otherwise. Never run `./hk.sh` directly; from another cwd, use the absolute path (`bash ~/.agents/skills/hkdata/hk.sh …` for the symlink install) — the wrapper is cwd-safe, but the doc text that names `./` paths assumes the skill root. All paths in `SKILL.md` and the reference docs are `./`-relative.
 
 ```bash
 # step 1: past experience

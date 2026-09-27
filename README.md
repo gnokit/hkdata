@@ -63,6 +63,16 @@ bash ./hk.sh catalog-embed      # ~10 min for 3,822 datasets
 
 To refresh from source: `catalog-sync --full --lang en,tc` (~2 h, resumable) or `catalog-sync --refresh` (14-day RSS delta, ~2 min).
 
+### Shared install (any project)
+
+Symlink the repo into the agents' skills folder so other codebases can use it; one venv, one Ollama model, and one vector store then serve every project:
+
+```bash
+ln -s "$(pwd)" ~/.agents/skills/hkdata
+```
+
+`SKILL.md`'s commands assume the skill directory as cwd; from other projects, call `bash ~/.agents/skills/hkdata/hk.sh <subcommand> …`.
+
 ## Usage
 
 ```bash

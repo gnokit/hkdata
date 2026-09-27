@@ -109,6 +109,22 @@ any time.
 
 ---
 
+## Using from another project (shared skill install)
+
+Symlink the repo into the agents' skills folder — one venv, one Ollama model,
+and one vector store serve every project:
+
+```bash
+ln -s "$(pwd)" ~/.agents/skills/hkdata
+```
+
+All commands resolve their own root, so from any other codebase call
+`bash ~/.agents/skills/hkdata/hk.sh <subcommand> …` instead of `bash ./hk.sh …`.
+Nothing else differs: the committed shards and the rebuilt `.cache/` store are
+shared through the link.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Fix |

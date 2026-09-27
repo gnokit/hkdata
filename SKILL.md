@@ -25,7 +25,10 @@ web search tools, not this skill.
 Before Steps 2–5, create a task list with one item per step; mark each `in progress`
 before executing and `completed` when done, adding a sub-task for any fallback.
 First run? Follow [`SETUP.md`](SETUP.md) once. All commands go through
-`bash ./hk.sh`, which picks the venv interpreter when present, else `python3`.
+`bash ./hk.sh`, which picks the venv interpreter when present, else `python3`,
+and resolves its own root. Invoked from another project (e.g. via a
+`~/.agents/skills` symlink)? Only the wrapper path changes —
+`bash ~/.agents/skills/hkdata/hk.sh "<subcommand>" …`.
 
 ## Step 1 — Check Past Experience
 
