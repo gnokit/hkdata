@@ -8,6 +8,8 @@ description: >
   demographics. Trigger phrases: "hkdata", "港數通", "港数通", "Hong Kong data",
   "data.gov.hk", "HK statistics", "HK population", "HK weather",
   "MTR/bus schedule", "HK public holidays", "badminton courts", "schools in HK".
+compatibility: Requires python3 + chromadb for search/embed (see SETUP.md); needs a reachable embedding backend — Ollama by default, or any backend via the Embedder interface (see SETUP.md "Integrating a new backend").
+license: MIT
 ---
 
 # 港數通 · hkdata — Hong Kong Open Data Query Tool
@@ -21,16 +23,27 @@ web search tools, not this skill.
 
 Before Steps 2–5, create a task list with one item per step; mark each `in progress`
 before executing and `completed` when done, adding a sub-task for any fallback.
-First run? Follow [`SETUP.md`](SETUP.md) once. All commands go through
-`bash ./hk.sh`, which picks the venv interpreter when present, else `python3`,
-and resolves its own root. Invoked from another project (e.g. via a
-`~/.agents/skills` symlink)? Only the wrapper path changes —
-`bash ~/.agents/skills/hkdata/hk.sh "<subcommand>" …`.
+
+First run? Follow [`SETUP.md`](SETUP.md) once. Resolve the skill root once (the
+docs never assume a runtime's install directory), then run every command through
+`bash "$SKILL_DIR/hk.sh"`:
+
+```bash
+: "${SKILL_DIR:=$(for d in "${HKDATA_SKILL_DIR:-}" "${CLAUDE_SKILL_DIR:-}" \
+    "$PWD/.agents/skills/hkdata" "$HOME/.agents/skills/hkdata" \
+    "$HOME/.config/agents/skills/hkdata" "${HERMES_HOME:-$HOME/.hermes}/skills/hkdata" \
+    "$HOME/.claude/skills/hkdata"; do [ -f "$d/hk.sh" ] && { echo "$d"; break; }; done)}"
+[ -n "$SKILL_DIR" ] || { echo "hkdata: set HKDATA_SKILL_DIR to the dir containing hk.sh" >&2; exit 1; }
+```
+
+The wrapper is cwd-safe (it resolves its own root) and picks the venv interpreter
+when present, else `python3`. If you prefer to run from the skill directory, the
+same commands work as `bash ./hk.sh "<subcommand>" …`.
 
 ## Step 1 — Check Past Experience
 
 ```bash
-bash ./hk.sh experience-search "<user query>"
+bash "$SKILL_DIR/hk.sh" experience-search "<user query>"
 ```
 
 Semantic search over past experiences — **positive** (a working recipe) and
@@ -51,20 +64,20 @@ for live data.
 ## Step 2 — Search the Full Catalog
 
 ```bash
-bash ./hk.sh catalog-search "<user query>"
+bash "$SKILL_DIR/hk.sh" catalog-search "<user query>"
 ```
 
-ChromaDB search over all **3,822** datasets (dense multilingual embeddings fused with
-a keyword pass) — it covers the whole catalog and understands Chinese, unlike the
-CKAN `package_search` API (see [`README.md`](README.md)). If the store is empty, build
-it once — `catalog-sync --full --lang en,tc` then `catalog-embed`
-(see [`SETUP.md`](SETUP.md)).
+ChromaDB search over the **full catalog** (`catalog-status` prints the current
+count) — dense multilingual embeddings fused with a keyword pass — it covers the
+whole catalog and understands Chinese, unlike the CKAN `package_search` API (see
+[`README.md`](README.md)). If the store is empty, build it once —
+`catalog-sync --full --lang en,tc` then `catalog-embed` (see [`SETUP.md`](SETUP.md)).
 
 ## Steps 3–4 — Inspect and Test the Endpoint
 
 ```bash
-bash ./hk.sh info "<dataset-id>" ["<id2>" ...]     # CKAN package_show: metadata, resources, endpoint URLs
-bash ./hk.sh test "<resource-url>" ["<url2>" ...]  # fetch the endpoint; auto-detects JSON/XML/CSV
+bash "$SKILL_DIR/hk.sh" info "<dataset-id>" ["<id2>" ...]     # CKAN package_show: metadata, resources, endpoint URLs
+bash "$SKILL_DIR/hk.sh" test "<resource-url>" ["<url2>" ...]  # fetch the endpoint; auto-detects JSON/XML/CSV
 ```
 
 ## Step 5 — Record as Experience (Mandatory)
@@ -73,10 +86,10 @@ The purpose of Step 5 is **memory write**: the next similar question is answered
 at Step 1 without redoing Steps 2–4.
 
 ```bash
-bash ./hk.sh experience-log --kind positive \
+bash "$SKILL_DIR/hk.sh" experience-log --kind positive \
   --topic "<question category>" --pattern "<query with placeholders>" --dataset <dataset-id> \
   --method "<what worked>" <!-- when a reference doc exists, cite it in --source -->
-bash ./hk.sh log-render
+bash "$SKILL_DIR/hk.sh" log-render
 ```
 
 It indexes the card immediately; if the embedding backend (e.g. Ollama) is down it
@@ -101,7 +114,7 @@ specific query:
 multi-endpoint joins, proxy logic): `cp ./references/template.md
 ./references/<category>-<dataset>.md`, add a row to `references/index.md` *and* an
 entry under the matching `### Category` heading, cite it via `--source`, then
-`bash ./hk.sh reindex`. For a dead end there is no doc — log a **negative** card
+`bash "$SKILL_DIR/hk.sh" reindex`. For a dead end there is no doc — log a **negative** card
 instead: `… experience-log --kind negative --topic "<what was asked>"
 --outcome unavailable --method "<what was searched>" --caveat "<closest proxy>"`.
 
@@ -117,12 +130,12 @@ documentation pending" and list the failures:
 
 | Command | Purpose |
 |---------|---------|
-| `bash ./hk.sh experience-search "<query>"` | Semantic search over past experiences, ± (Step 1) |
-| `bash ./hk.sh experience-log --kind positive\|negative …` | Record + index an experience (Step 5) |
-| `bash ./hk.sh catalog-search "<query>"` | ChromaDB search over the full catalog (Step 2) |
-| `bash ./hk.sh info "<id>" …` | CKAN `package_show` metadata (Steps 3–4) |
-| `bash ./hk.sh test "<url>" …` | Test endpoint and detect format (Steps 3–4) |
-| `bash ./hk.sh embed-status` | Active embedding backend + store match |
+| `bash "$SKILL_DIR/hk.sh" experience-search "<query>"` | Semantic search over past experiences, ± (Step 1) |
+| `bash "$SKILL_DIR/hk.sh" experience-log --kind positive\|negative …` | Record + index an experience (Step 5) |
+| `bash "$SKILL_DIR/hk.sh" catalog-search "<query>"` | ChromaDB search over the full catalog (Step 2) |
+| `bash "$SKILL_DIR/hk.sh" info "<id>" …` | CKAN `package_show` metadata (Steps 3–4) |
+| `bash "$SKILL_DIR/hk.sh" test "<url>" …` | Test endpoint and detect format (Steps 3–4) |
+| `bash "$SKILL_DIR/hk.sh" embed-status` | Active embedding backend + store match |
 
 The full CLI list (build, refresh, `reindex`, `log-*`) is in [`README.md`](README.md).
 
@@ -130,7 +143,7 @@ The full CLI list (build, refresh, `reindex`, `log-*`) is in [`README.md`](READM
 
 When Step 1 (experience) and Step 2 (`catalog-search`) both return nothing useful:
 
-1. Search structured logs: `bash ./hk.sh log-search "<topic>" "0 results"`
+1. Search structured logs: `bash "$SKILL_DIR/hk.sh" log-search "<topic>" "0 results"`
 2. If a known strategy exists → use it; otherwise web search `site:data.gov.hk <topic>`
 3. Record the outcome (Step 5, negative card) and `log-render`
 

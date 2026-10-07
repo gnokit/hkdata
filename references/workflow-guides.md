@@ -145,12 +145,16 @@ CKAN's `package_search` is a **Solr-backed index covering only ~631 of the ~3,82
 datasets** that the DB-backed `package_list` returns, so it is no longer used. The
 catalog is crawled once and searched through ChromaDB:
 
+> `$SKILL_DIR` points at the skill root (set by the preamble in
+> [`SKILL.md`](../SKILL.md)). If you run from the skill directory you can use
+> `bash ./hk.sh …` instead.
+
 ```bash
-bash ./hk.sh catalog-sync --full --lang en,tc   # crawl (resumable)
-bash ./hk.sh catalog-embed              # embed into ChromaDB
-bash ./hk.sh catalog-search "康文署羽毛球場"
-bash ./hk.sh catalog-status                      # coverage report
-bash ./hk.sh catalog-sync --refresh              # re-fetch 14-day RSS changes
+bash "$SKILL_DIR/hk.sh" catalog-sync --full --lang en,tc   # crawl (resumable)
+bash "$SKILL_DIR/hk.sh" catalog-embed              # embed into ChromaDB
+bash "$SKILL_DIR/hk.sh" catalog-search "康文署羽毛球場"
+bash "$SKILL_DIR/hk.sh" catalog-status                      # coverage report
+bash "$SKILL_DIR/hk.sh" catalog-sync --refresh              # re-fetch 14-day RSS changes
 ```
 
 - Seed: `references/catalog-names.json` (sorted IDs, committed).
@@ -196,9 +200,9 @@ export HKDATA_EMBED_PROVIDER=openai              # or "ollama" (default)
 export HKDATA_EMBED_MODEL=text-embedding-3-small
 export HKDATA_EMBED_URL=https://api.openai.com/v1/embeddings
 export HKDATA_EMBED_API_KEY=sk-...
-bash ./hk.sh catalog-embed                       # rebuild with the new provider
-bash ./hk.sh experience-embed
-bash ./hk.sh embed-status                        # confirm "match"
+bash "$SKILL_DIR/hk.sh" catalog-embed                       # rebuild with the new provider
+bash "$SKILL_DIR/hk.sh" experience-embed
+bash "$SKILL_DIR/hk.sh" embed-status                        # confirm "match"
 ```
 
 The same flags exist per-command (`--provider`, `--model`, `--url`, `--api-key`),

@@ -109,7 +109,10 @@ bash ./hk.sh catalog-embed            # re-embed only what changed
 
 `catalog-sync` writes sanitized, PII-free shards to `data/catalog/`. The ChromaDB
 store under `.cache/catalog/chroma/` is derived and can be deleted and rebuilt at
-any time.
+any time. The store is keyed by the **embedding fingerprint** (`provider:model`);
+`embed-status` reports match/mismatch, so switching embedding provider or model
+invalidates the vectors and needs a fresh `catalog-embed` (see *Using a different
+embedding provider* below).
 
 ---
 
