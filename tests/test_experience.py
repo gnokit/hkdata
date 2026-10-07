@@ -82,6 +82,7 @@ def test_build_metadata_is_scalar():
     meta = experience.build_metadata(NEGATIVE)
     assert meta["kind"] == "negative"
     assert meta["outcome"] == "not_on_data_gov_hk"
+    assert meta["model"] == vectors.DEFAULT_MODEL
     assert all(isinstance(v, (str, int, float, bool)) for v in meta.values())
     assert meta["text_hash"]
 

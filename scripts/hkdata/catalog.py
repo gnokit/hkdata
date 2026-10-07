@@ -68,7 +68,7 @@ _LOCALE_KEEP = ("title", "notes", "organization", "groups", "tags")
 STORE_FIELDS = (
     "name", "title", "notes", "url", "organization", "groups", "tags",
     "resources", "update_frequency", "isopen", "metadata_modified",
-    "license_title", "locales",
+    "license_title", "locales", "data_dictionary",
 )
 _ORG_FIELDS = ("title", "name")
 _RESOURCE_FIELDS = ("format", "name", "url", "is_api")

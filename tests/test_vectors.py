@@ -99,6 +99,21 @@ def test_text_hash_is_stable_and_content_sensitive():
     assert vectors.text_hash("abc") != vectors.text_hash("abd")
 
 
+def test_rrf_rank_keeps_first_rank_on_duplicates():
+    # "a" appears at rank 0 (best) and rank 3; the later, worse rank must not win.
+    scores = vectors._rrf_rank(["a", "b", "c", "a"])
+    assert scores["a"] == 1.0 / (60 + 0 + 1)
+    assert scores["b"] == 1.0 / (60 + 1 + 1)
+    assert scores["c"] == 1.0 / (60 + 2 + 1)
+    # Sanity: first rank strictly beats any later rank.
+    assert scores["a"] > 1.0 / (60 + 3 + 1)
+
+
+def test_rrf_rank_skips_empty_names():
+    scores = vectors._rrf_rank(["a", "", "b"])
+    assert set(scores) == {"a", "b"}
+
+
 def test_expand_query_aliases():
     aliases = {"康文署": ["康樂及文化事務署", "LCSD"]}
     assert vectors.expand_query("康文署羽毛球場", aliases) == [

@@ -34,6 +34,25 @@ def _require_chromadb() -> bool:
     return False
 
 
+def _resolve_embedder(args: argparse.Namespace):
+    """Resolve the embedding backend from CLI flags + environment variables."""
+    provider = getattr(args, "provider", None)
+    model = getattr(args, "model", None)
+    url = getattr(args, "url", None)
+    api_key = getattr(args, "api_key", None)
+    return vectors.resolve_embedder(provider, model, url, api_key)
+
+
+def _warn_store_mismatch(paths, collection_name: str, embedder) -> None:
+    status = vectors.embed_status(paths, collection_name, embedder=embedder)
+    if status.get("available") and not status.get("match"):
+        _eprint(
+            f"Warning: the vector store was built with "
+            f"'{status.get('store_fingerprint')}' but the active embedder is "
+            f"'{embedder.fingerprint}'. Run the matching *-embed command to rebuild."
+        )
+
+
 def cmd_info(args: argparse.Namespace) -> int:
     ids = list(args.dataset_ids)
     if not ids:
@@ -166,13 +185,16 @@ def cmd_catalog_embed(args: argparse.Namespace) -> int:
     if not _require_chromadb():
         return 1
     paths = catalog.default_paths()
+    embedder = _resolve_embedder(args)
     try:
         result = vectors.build_vectors(
-            paths, model=args.model, url=args.url, batch=args.batch)
+            paths, model=embedder.fingerprint, embed_fn=embedder.embed,
+            batch=args.batch)
     except RuntimeError as exc:
         _eprint(f"Error: {exc}")
         return 1
-    _eprint(f"Vector store ready: {result['total']} datasets.")
+    _eprint(f"Vector store ready: {result['total']} datasets "
+            f"({embedder.fingerprint}).")
     return 0
 
 
@@ -181,9 +203,12 @@ def cmd_catalog_search(args: argparse.Namespace) -> int:
         return 1
     paths = catalog.default_paths()
     query = " ".join(args.keywords)
+    embedder = _resolve_embedder(args)
+    _warn_store_mismatch(paths, vectors.COLLECTION_NAME, embedder)
     try:
-        results = vectors.hybrid_search(query, paths, top_n=args.top_n,
-                                        model=args.model, url=args.url)
+        results = vectors.hybrid_search(
+            query, paths, top_n=args.top_n, embed_fn=embedder.embed,
+            query_instruction=embedder.query_instruction)
     except RuntimeError as exc:
         _eprint(f"Error: {exc}")
         return 1
@@ -203,8 +228,14 @@ def cmd_experience_search(args: argparse.Namespace) -> int:
     if not _require_chromadb():
         return 1
     query = " ".join(args.keywords)
+    embedder = _resolve_embedder(args)
+    _warn_store_mismatch(catalog.default_paths(), experience.COLLECTION_NAME,
+                         embedder)
     try:
-        results = experience.search(query, top_n=args.top_n, kind=args.kind)
+        results = experience.search(
+            query, top_n=args.top_n, kind=args.kind,
+            embed_fn=embedder.embed,
+            query_instruction=embedder.query_instruction)
     except RuntimeError as exc:
         _eprint(f"Error: {exc}")
         return 1
@@ -222,6 +253,10 @@ def cmd_experience_search(args: argparse.Namespace) -> int:
 
 
 def cmd_experience_log(args: argparse.Namespace) -> int:
+    outcome = (args.outcome or "").strip()
+    if outcome in experience.NEGATIVE_OUTCOMES and args.kind != "negative":
+        _eprint(f"Warning: outcome '{outcome}' implies a negative card; "
+                f"pass --kind negative (got '{args.kind}').")
     exp = {
         "kind": args.kind,
         "topic": args.topic,
@@ -230,15 +265,18 @@ def cmd_experience_log(args: argparse.Namespace) -> int:
         "datasets": args.dataset or [],
         "method": args.method or "",
         "endpoint": args.endpoint or "",
-        "outcome": args.outcome or "",
+        "outcome": outcome,
         "caveats": args.caveat or [],
         "source": args.source or "manual",
         "date": args.date,
         "last_verified": args.date,
     }
     upsert = vectors.have_chromadb()
+    embedder = _resolve_embedder(args)
     try:
-        record = experience.append_experience(exp, upsert=upsert)
+        record = experience.append_experience(
+            exp, model=embedder.fingerprint, embed_fn=embedder.embed,
+            upsert=upsert)
     except RuntimeError as exc:
         _eprint(f"Error: {exc}")
         return 1
@@ -252,13 +290,16 @@ def cmd_experience_log(args: argparse.Namespace) -> int:
 def cmd_experience_embed(args: argparse.Namespace) -> int:
     if not _require_chromadb():
         return 1
+    embedder = _resolve_embedder(args)
     try:
         result = experience.embed_experiences(
-            model=args.model, url=args.url, batch=args.batch)
+            model=embedder.fingerprint, embed_fn=embedder.embed,
+            batch=args.batch)
     except RuntimeError as exc:
         _eprint(f"Error: {exc}")
         return 1
-    _eprint(f"Experience store ready: {result['total']} cards.")
+    _eprint(f"Experience store ready: {result['total']} cards "
+            f"({embedder.fingerprint}).")
     return 0
 
 
@@ -290,6 +331,55 @@ def cmd_catalog_status(args: argparse.Namespace) -> int:
     print(f"Last full sync: {data['last_full_sync'] or '-'}")
     print(f"Last activity:  {data['fetched_at'] or '-'}")
     return 0
+
+
+def cmd_embed_status(args: argparse.Namespace) -> int:
+    paths = catalog.default_paths()
+    embedder = _resolve_embedder(args)
+    catalog_status = vectors.embed_status(paths, vectors.COLLECTION_NAME,
+                                          embedder=embedder)
+    exp_status = vectors.embed_status(paths, experience.COLLECTION_NAME,
+                                      embedder=embedder)
+    if args.json:
+        print(json.dumps({"embedder": {"provider": embedder.name,
+                                       "model": embedder.model,
+                                       "fingerprint": embedder.fingerprint},
+                          "catalog": catalog_status,
+                          "experiences": exp_status},
+                         ensure_ascii=False, indent=2))
+        return 0
+    print(f"Provider:    {embedder.name}")
+    print(f"Model:       {embedder.model}")
+    print(f"Fingerprint: {embedder.fingerprint}")
+    print(f"Registered:  {', '.join(vectors.registered_providers())}")
+    for label, status in (("catalog", catalog_status),
+                          ("experiences", exp_status)):
+        if not status.get("available"):
+            print(f"{label}: unavailable")
+            continue
+        match = "match" if status.get("match") else "MISMATCH"
+        print(f"{label}: {status.get('count', 0)} vectors | store "
+              f"'{status.get('store_fingerprint')}' | {match}")
+    if not catalog_status.get("match") or not exp_status.get("match"):
+        _eprint("Rebuild the mismatched store with the matching *-embed command.")
+    return 0
+
+
+def _add_embed_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument(
+        "--provider", default=None,
+        help="Embedding provider: a registered name ('ollama', 'openai') or a "
+             "dotted path 'pkg.module:ClassName' (default: env "
+             "HKDATA_EMBED_PROVIDER or 'ollama')")
+    parser.add_argument(
+        "--model", default=None,
+        help="Embedding model (default: env HKDATA_EMBED_MODEL or the backend default)")
+    parser.add_argument(
+        "--url", default=None,
+        help="Embedding endpoint URL (default: env HKDATA_EMBED_URL or the backend default)")
+    parser.add_argument(
+        "--api-key", default=None,
+        help="API key for the backend (default: env HKDATA_EMBED_API_KEY)")
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -346,11 +436,8 @@ def build_parser() -> argparse.ArgumentParser:
     catalog_sync_parser.set_defaults(func=cmd_catalog_sync)
 
     catalog_embed_parser = subparsers.add_parser(
-        "catalog-embed", help="Build the ChromaDB vector store (local Ollama embeddings)")
-    catalog_embed_parser.add_argument("--model", default=vectors.DEFAULT_MODEL,
-                                      help=f"Ollama embedding model (default: {vectors.DEFAULT_MODEL})")
-    catalog_embed_parser.add_argument("--url", default=vectors.DEFAULT_OLLAMA_URL,
-                                      help="Ollama embed endpoint")
+        "catalog-embed", help="Build the ChromaDB vector store (local or API embeddings)")
+    _add_embed_args(catalog_embed_parser)
     catalog_embed_parser.add_argument("--batch", type=int, default=vectors.EMBED_BATCH,
                                       help=f"Embedding batch size (default: {vectors.EMBED_BATCH})")
     catalog_embed_parser.set_defaults(func=cmd_catalog_embed)
@@ -360,10 +447,7 @@ def build_parser() -> argparse.ArgumentParser:
     catalog_search_parser.add_argument("keywords", nargs="+", help="Natural-language query")
     catalog_search_parser.add_argument("--top-n", type=int, default=10,
                                        help="Max results (default: 10)")
-    catalog_search_parser.add_argument("--model", default=vectors.DEFAULT_MODEL,
-                                       help=f"Ollama embedding model (default: {vectors.DEFAULT_MODEL})")
-    catalog_search_parser.add_argument("--url", default=vectors.DEFAULT_OLLAMA_URL,
-                                       help="Ollama embed endpoint")
+    _add_embed_args(catalog_search_parser)
     catalog_search_parser.add_argument("--json", action="store_true", help="JSON output")
     catalog_search_parser.set_defaults(func=cmd_catalog_search)
 
@@ -372,12 +456,19 @@ def build_parser() -> argparse.ArgumentParser:
     catalog_status_parser.add_argument("--json", action="store_true", help="JSON output")
     catalog_status_parser.set_defaults(func=cmd_catalog_status)
 
+    embed_status_parser = subparsers.add_parser(
+        "embed-status", help="Show the active embedding backend and store match")
+    _add_embed_args(embed_status_parser)
+    embed_status_parser.add_argument("--json", action="store_true", help="JSON output")
+    embed_status_parser.set_defaults(func=cmd_embed_status)
+
     exp_search = subparsers.add_parser(
         "experience-search", help="Semantic search over past experiences (positive/negative)")
     exp_search.add_argument("keywords", nargs="+", help="Natural-language query")
     exp_search.add_argument("--top-n", type=int, default=5, help="Max results (default: 5)")
     exp_search.add_argument("--kind", choices=["positive", "negative"],
                             help="Only return this kind of experience")
+    _add_embed_args(exp_search)
     exp_search.add_argument("--json", action="store_true", help="JSON output")
     exp_search.set_defaults(func=cmd_experience_search)
 
@@ -390,16 +481,18 @@ def build_parser() -> argparse.ArgumentParser:
     exp_log.add_argument("--dataset", action="append", help="Dataset ID (repeatable)")
     exp_log.add_argument("--method", help="What worked (or the dead end)")
     exp_log.add_argument("--endpoint", help="Endpoint URL")
-    exp_log.add_argument("--outcome", help="Short verdict, e.g. located / unavailable")
+    exp_log.add_argument("--outcome", choices=experience.OUTCOMES,
+                         help="Controlled verdict: verified / located / resolved / "
+                              "unavailable / pitfall")
     exp_log.add_argument("--caveat", action="append", help="Caveat (repeatable)")
     exp_log.add_argument("--source", help="Where this came from (default: manual)")
     exp_log.add_argument("--date", default=time.strftime("%Y-%m-%d"), help="Date (YYYY-MM-DD)")
+    _add_embed_args(exp_log)
     exp_log.set_defaults(func=cmd_experience_log)
 
     exp_embed = subparsers.add_parser(
         "experience-embed", help="Build the ChromaDB experience index")
-    exp_embed.add_argument("--model", default=vectors.DEFAULT_MODEL)
-    exp_embed.add_argument("--url", default=vectors.DEFAULT_OLLAMA_URL)
+    _add_embed_args(exp_embed)
     exp_embed.add_argument("--batch", type=int, default=vectors.EMBED_BATCH)
     exp_embed.set_defaults(func=cmd_experience_embed)
 
@@ -413,7 +506,11 @@ def build_parser() -> argparse.ArgumentParser:
 def main(argv: List[str] = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
-    return args.func(args)
+    try:
+        return args.func(args)
+    except ValueError as exc:  # e.g. unknown embedding provider
+        _eprint(f"Error: {exc}")
+        return 2
 
 
 if __name__ == "__main__":

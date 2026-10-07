@@ -15,60 +15,42 @@ import hashlib
 import json
 import re
 import sys
-import time
-import urllib.error
-import urllib.request
 from typing import Callable, Dict, List, Optional
 
 from . import catalog
+from .embeddings import (
+    DEFAULT_MODEL,
+    DEFAULT_OLLAMA_URL,
+    EMBED_BATCH,
+    EMBED_TIMEOUT,
+    QWEN_QUERY_INSTRUCTION,
+    registered_providers,
+    resolve_embedder,
+)
 
 COLLECTION_NAME = "hkdata_datasets"
-DEFAULT_MODEL = "qwen3-embedding:0.6b"
-DEFAULT_OLLAMA_URL = "http://localhost:11434/api/embed"
 ALIASES_PATH = catalog.REFERENCES_DIR / "aliases.json"
-EMBED_BATCH = 32
-EMBED_TIMEOUT = 120
 
-# Qwen3-Embedding is trained with an instruction prefix on the query side only.
-QUERY_INSTRUCTION = (
-    "Instruct: Given a search query, retrieve relevant Hong Kong dataset metadata\n"
-    "Query: "
-)
+# Backward-compatible alias: qwen3's query-side instruction prefix. New code should
+# use the per-provider ``query_instruction`` from :func:`resolve_embedder` instead.
+QUERY_INSTRUCTION = QWEN_QUERY_INSTRUCTION
 
 
 # ---------------------------------------------------------------------------
-# Ollama embeddings
+# Embeddings (delegated to the pluggable backend)
 # ---------------------------------------------------------------------------
 
 
 def embed_texts(texts: List[str], model: str = DEFAULT_MODEL,
                 url: str = DEFAULT_OLLAMA_URL) -> List[List[float]]:
-    """Embed a batch of texts via the Ollama HTTP API."""
-    payload = json.dumps({"model": model, "input": texts}).encode("utf-8")
-    request = urllib.request.Request(
-        url, data=payload, headers={"Content-Type": "application/json"})
-    last_error: Optional[Exception] = None
-    for attempt in range(3):
-        try:
-            with urllib.request.urlopen(request, timeout=EMBED_TIMEOUT) as response:
-                body = json.loads(response.read().decode("utf-8"))
-            embeddings = body.get("embeddings")
-            if not embeddings:
-                raise RuntimeError("Ollama returned no embeddings")
-            return embeddings
-        except (urllib.error.URLError, TimeoutError, json.JSONDecodeError,
-                RuntimeError) as exc:
-            last_error = exc
-            time.sleep(2 ** attempt)
-    raise RuntimeError(f"Ollama embedding failed: {last_error}")
+    """Embed a batch of texts via the local Ollama API (backward-compatible)."""
+    from . import embeddings
+    return embeddings._ollama_embed(texts, model, url)
 
 
 def ollama_available(url: str = DEFAULT_OLLAMA_URL) -> bool:
-    try:
-        embed_texts(["ping"], url=url)
-        return True
-    except Exception:
-        return False
+    from . import embeddings
+    return embeddings.ollama_available(url)
 
 
 # ---------------------------------------------------------------------------
@@ -289,7 +271,8 @@ def vector_search(query: str, paths: catalog.CatalogPaths, top_n: int = 10,
                   model: str = DEFAULT_MODEL, url: str = DEFAULT_OLLAMA_URL,
                   collection_name: str = COLLECTION_NAME,
                   embed_fn: Optional[Callable[[List[str]], List[List[float]]]] = None,
-                  client=None, verbose: bool = True) -> List[dict]:
+                  client=None, verbose: bool = True,
+                  query_instruction: str = QUERY_INSTRUCTION) -> List[dict]:
     """Semantic search over the vector store. Returns ranked result dicts."""
     if embed_fn is None:
         def embed_fn(texts: List[str]) -> List[List[float]]:
@@ -303,7 +286,7 @@ def vector_search(query: str, paths: catalog.CatalogPaths, top_n: int = 10,
                   file=sys.stderr)
         return []
 
-    query_vector = embed_fn([QUERY_INSTRUCTION + query])[0]
+    query_vector = embed_fn([query_instruction + query])[0]
     result = collection.query(query_embeddings=[query_vector], n_results=top_n,
                               include=["metadatas", "documents", "distances"])
     items = []
@@ -319,9 +302,17 @@ def vector_search(query: str, paths: catalog.CatalogPaths, top_n: int = 10,
 
 
 def _rrf_rank(items: List[str], k: int = 60) -> Dict[str, float]:
-    """Reciprocal Rank Fusion over a ranked list of names."""
-    return {name: 1.0 / (k + rank + 1)
-            for rank, name in enumerate(items) if name}
+    """Reciprocal Rank Fusion over a ranked list of names.
+
+    Keeps the **first** (best) rank when a name repeats: the keyword pass appends
+    a name once per matching token, so a dataset matching several tokens would
+    otherwise have its best rank overwritten by a later, worse one.
+    """
+    scores: Dict[str, float] = {}
+    for rank, name in enumerate(items):
+        if name:
+            scores.setdefault(name, 1.0 / (k + rank + 1))
+    return scores
 
 
 def _result_dicts(query_result) -> List[dict]:
@@ -343,7 +334,8 @@ def hybrid_search(query: str, paths: catalog.CatalogPaths, top_n: int = 10,
                   collection_name: str = COLLECTION_NAME,
                   embed_fn: Optional[Callable[[List[str]], List[List[float]]]] = None,
                   client=None, aliases: Optional[Dict[str, List[str]]] = None,
-                  verbose: bool = True) -> List[dict]:
+                  verbose: bool = True,
+                  query_instruction: str = QUERY_INSTRUCTION) -> List[dict]:
     """ChromaDB retrieval: dense KNN fused (RRF) with a keyword-filtered pass.
 
     Chroma has no ranked BM25. The keyword pass therefore runs the *same dense
@@ -367,7 +359,7 @@ def hybrid_search(query: str, paths: catalog.CatalogPaths, top_n: int = 10,
     expanded = expand_query(query, aliases)
     dense_text = query + ((" " + " ".join(expanded)) if expanded else "")
     fetch = max(top_n * 3, 20)
-    query_vector = embed_fn([QUERY_INSTRUCTION + dense_text])[0]
+    query_vector = embed_fn([query_instruction + dense_text])[0]
 
     dense_res = collection.query(query_embeddings=[query_vector], n_results=fetch,
                                  include=["metadatas", "distances"])
@@ -422,3 +414,42 @@ def vector_status(paths: catalog.CatalogPaths,
                 "path": str(_vector_dir(paths))}
     except Exception as exc:  # pragma: no cover - defensive
         return {"available": False, "error": str(exc)}
+
+
+def embed_status(paths: catalog.CatalogPaths,
+                 collection_name: str = COLLECTION_NAME,
+                 embedder=None) -> dict:
+    """Report the resolved embedding backend and whether the store matches it.
+
+    The store's fingerprint is the ``model`` metadata on its vectors (set by
+    ``build_vectors``); ``catalog-embed`` re-embeds whenever it differs, so a
+    mismatch here means "rebuild with ``catalog-embed`` before trusting results".
+    """
+    if embedder is None:
+        try:
+            embedder = resolve_embedder()
+        except ValueError as exc:
+            return {"provider": "?", "model": "?", "error": str(exc)}
+    info = {
+        "provider": embedder.name,
+        "model": embedder.model,
+        "fingerprint": embedder.fingerprint,
+        "available": False,
+        "count": 0,
+        "store_fingerprint": None,
+        "match": False,
+    }
+    if not have_chromadb():
+        return info
+    try:
+        client = _client(paths)
+        collection = _collection(client, collection_name)
+        info["available"] = True
+        info["count"] = collection.count()
+        existing = collection.get(limit=1, include=["metadatas"])
+        if existing.get("metadatas") and existing["metadatas"][0]:
+            info["store_fingerprint"] = existing["metadatas"][0].get("model") or ""
+            info["match"] = info["store_fingerprint"] == embedder.fingerprint
+    except Exception as exc:  # pragma: no cover - defensive
+        info["error"] = str(exc)
+    return info

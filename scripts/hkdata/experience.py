@@ -27,6 +27,12 @@ COLLECTION_NAME = "hkdata_experiences"
 KIND_POSITIVE = "positive"
 KIND_NEGATIVE = "negative"
 
+# Controlled --outcome vocabulary (see SKILL.md Step 5). "unavailable" means the
+# data does not exist on data.gov.hk; "pitfall" means this *path* is dead/retired
+# but the data may still live elsewhere — Step 1 must handle them differently.
+OUTCOMES = ("verified", "located", "resolved", "unavailable", "pitfall")
+NEGATIVE_OUTCOMES = ("unavailable", "pitfall")
+
 _EMAIL_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
 
@@ -103,7 +109,7 @@ def build_document(exp: Dict) -> str:
     return "\n".join(parts)
 
 
-def build_metadata(exp: Dict) -> Dict:
+def build_metadata(exp: Dict, model: str = "") -> Dict:
     exp = normalize(exp)
     return {
         "id": exp["id"],
@@ -117,6 +123,7 @@ def build_metadata(exp: Dict) -> Dict:
         "date": exp["date"],
         "last_verified": exp["last_verified"],
         "text_hash": vectors.text_hash(build_document(exp)),
+        "model": model or vectors.DEFAULT_MODEL,
     }
 
 
@@ -199,7 +206,7 @@ def upsert_experiences(records: List[Dict],
             ids=[r["id"] for r in chunk],
             embeddings=embed_fn([build_document(r) for r in chunk]),
             documents=[build_document(r) for r in chunk],
-            metadatas=[build_metadata(r) for r in chunk],
+            metadatas=[build_metadata(r, model) for r in chunk],
         )
     return len(records)
 
@@ -225,9 +232,10 @@ def embed_experiences(paths: Optional[catalog.CatalogPaths] = None,
 
     pending = []
     for record in records:
-        meta = build_metadata(record)
+        meta = build_metadata(record, model)
         old = known.get(record["id"])
-        if old is None or old.get("text_hash") != meta["text_hash"]:
+        if (old is None or old.get("text_hash") != meta["text_hash"]
+                or old.get("model") != model):
             pending.append(record)
 
     written = 0
@@ -237,7 +245,7 @@ def embed_experiences(paths: Optional[catalog.CatalogPaths] = None,
             ids=[r["id"] for r in chunk],
             embeddings=embed_fn([build_document(r) for r in chunk]),
             documents=[build_document(r) for r in chunk],
-            metadatas=[build_metadata(r) for r in chunk],
+            metadatas=[build_metadata(r, model) for r in chunk],
         )
         written += len(chunk)
         if verbose:
@@ -268,7 +276,8 @@ def search(query: str, paths: Optional[catalog.CatalogPaths] = None,
            url: str = vectors.DEFAULT_OLLAMA_URL,
            collection_name: str = COLLECTION_NAME,
            embed_fn: Optional[Callable[[List[str]], List[List[float]]]] = None,
-           client=None, verbose: bool = True) -> List[dict]:
+           client=None, verbose: bool = True,
+           query_instruction: str = vectors.QUERY_INSTRUCTION) -> List[dict]:
     """Semantic search over experiences, optionally filtered by ``kind``."""
     if embed_fn is None:
         def embed_fn(texts: List[str]) -> List[List[float]]:
@@ -285,7 +294,7 @@ def search(query: str, paths: Optional[catalog.CatalogPaths] = None,
     where = {"kind": kind} if kind in (KIND_POSITIVE, KIND_NEGATIVE) else None
     expanded = vectors.expand_query(query)
     dense_text = query + ((" " + " ".join(expanded)) if expanded else "")
-    query_vector = embed_fn([vectors.QUERY_INSTRUCTION + dense_text])[0]
+    query_vector = embed_fn([query_instruction + dense_text])[0]
     fetch = max(top_n * 3, 20)
 
     dense = collection.query(query_embeddings=[query_vector], n_results=fetch,

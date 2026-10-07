@@ -102,6 +102,14 @@ def test_sanitize_strips_personal_contact_fields():
     assert clean["locales"]["tc"]["organization"] == {"title": "部門"}
 
 
+def test_sanitize_keeps_data_dictionary():
+    raw = {"name": "ds-a", "title": "T", "notes": "N",
+           "data_dictionary": "https://example.gov.hk/dict.pdf",
+           "resources": []}
+    clean = catalog.sanitize(raw)
+    assert clean["data_dictionary"] == "https://example.gov.hk/dict.pdf"
+
+
 def test_write_shards_output_is_sanitized(paths):
     record = _record("ds-a", title="Title")
     record.update({"maintainer_email": "x@y.gov.hk", "maintainer_phone": "999",
