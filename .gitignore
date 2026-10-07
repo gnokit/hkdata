@@ -23,3 +23,25 @@ tmp/
 .env
 .env.*
 *.key
+
+# --- Experience (private: grows with use, not shared) ---
+data/experiences.jsonl
+references/index.md
+references/*.md
+# method docs, not experience — keep these three sharable:
+!references/template.md
+!references/category-mapping.md
+!references/workflow-guides.md
+
+# --- Logs (rendered views; rebuilt from experiences.jsonl by `log-render`) ---
+logs/
+
+# --- Search index (rebuilt by `reindex`) ---
+references/search-index.json
+
+# NOTE: data/catalog/*.jsonl IS tracked on purpose — it is the pinned base
+# corpus the ChromaDB catalog is built from (`catalog-embed`). Re-crawling
+# via `catalog-sync` yields a *different* moving snapshot, so keep it in git.
+
+# --- Vector stores (rebuilt by `catalog-embed` / `experience-embed`) ---
+.cache/
