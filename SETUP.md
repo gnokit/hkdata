@@ -196,6 +196,42 @@ shared through the link.
 
 ---
 
+## Publishing to a public remote (guard rails)
+
+This repo is meant to be **shareable as an engine**: `SKILL.md`, `scripts/`,
+`SETUP.md`, the three method docs under `references/`, and the pinned catalog
+shards. The knowledge you accumulate — `data/experiences.jsonl`, the
+`references/<dataset>.md` recipes, `logs/`, `references/index.md` and
+`search-index.json` — is **private** and untracked (see `.gitignore`).
+
+Install the pre-push gate once per clone:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-push` then runs `scripts/public-preflight.sh` automatically on
+**every** `git push`, checking:
+
+| Check | Blocks when |
+|---|---|
+| tracked-file scope | a private path was re-added (typically `git add -f`) |
+| incoming commits | the commits being pushed add/change private paths |
+| credentials | `sk-…`, `ghp_…`, `github_pat_…`, `AKIA…`, private keys … |
+| personal data | `/Users/<name>`, HKID, `+852` numbers, personal email domains |
+| bulk | warns (does not block) on tracked files over 5 MB |
+
+Run it by hand any time with `bash scripts/public-preflight.sh`. It exits
+non-zero to block the push; `git push --no-verify` bypasses it entirely, which
+is why the repository also has GitHub-side **secret scanning + push protection**
+enabled — that layer cannot be bypassed from the client.
+
+Untracking is **not** unpublishing: history keeps whatever was once committed,
+and a fork keeps a snapshot of it. Decide a repo's class (engine vs knowledge)
+before the first push.
+
+---
+
 ## Troubleshooting
 
 | Symptom | Fix |

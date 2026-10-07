@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# pre-push — thin, versioned shim. git runs this for every `git push` once
+# `git config core.hooksPath .githooks` has been run in this clone (see SETUP.md).
+#
+# git passes: $1 = remote name, $2 = remote URL; the refs about to be pushed
+# arrive on stdin. We hand both to the tracked policy script.
+set -uo pipefail
+root="$(git rev-parse --show-toplevel)"
+exec "$root/scripts/public-preflight.sh" "${1:-}" "${2:-}"
