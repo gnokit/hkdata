@@ -23,6 +23,17 @@ now?"* — 它會找出正確的官方 dataset、查詢即時 API，而且**當�
 
 ---
 
+## 實戰示範
+
+以下是 AI Agent (GrokBot) 真實回答的例子 —— 每個答案都註明背後的 data.gov.hk dataset。
+
+| | | |
+|---|---|---|
+| <img src="docs/screenshots/parking-vacancy-nearby.webp" width="260" alt="商場附近即時停車場空位"> | <img src="docs/screenshots/library-new-books.webp" width="260" alt="圖書館新增館藏書名搜尋"> | <img src="docs/screenshots/sports-running-classes.webp" width="260" alt="社區康體活動跑步班及報名期"> |
+| **即時停車場空位**<br>商場附近最近 5 個停車場，空位即時更新 | **圖書館新增館藏**<br>搜尋康文署最新入藏書籍，可按相關度或入藏日期排序 | **運動課程**<br>SmartPLAY 跑步班連報名期 |
+| <img src="docs/screenshots/ferry-cheung-chau-eta.webp" width="260" alt="渡輪時間表結合即時船隻 ETA"> | <img src="docs/screenshots/film-fund-roi.webp" width="260" alt="電影發展基金資助性價比排行"> | <img src="docs/screenshots/kindergarten-enrolment-trend.webp" width="260" alt="2015 至 2025 年幼稚園及小學學生人數趨勢"> |
+| **渡輪時間表 + 即時 ETA**<br>靜態時間表結合即時船隻位置 | **電影發展基金性價比**<br>票房 ÷ 資助，兩個 dataset 連結 | **學生人數趨勢**<br>幼稚園 → 小學系列，2015–2025 |
+
 ## 可以做什麼
 
 港數通將自然語言問題轉化為有出處、即時的答案：

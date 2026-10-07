@@ -25,6 +25,17 @@ You    : how many PRH public housing estates are in Kwun Tong?
 
 ---
 
+## In action
+
+Real answers from the AI Agent (GrokBot) — every one cites the data.gov.hk dataset behind it.
+
+| | | |
+|---|---|---|
+| <img src="docs/screenshots/parking-vacancy-nearby.webp" width="260" alt="Live car-park vacancy near a shopping mall"> | <img src="docs/screenshots/library-new-books.webp" width="260" alt="Library new additions matching a title search"> | <img src="docs/screenshots/sports-running-classes.webp" width="260" alt="Community sports running courses and enrolment windows"> |
+| **Live car-park vacancy**<br>Five nearest car parks to a mall, vacancy updated in real time | **Library new additions**<br>Search LCSD's newest books, by relevance or by date added | **Sports courses**<br>Running classes from SmartPLAY, with enrolment windows |
+| <img src="docs/screenshots/ferry-cheung-chau-eta.webp" width="260" alt="Ferry timetable joined with live vessel ETA"> | <img src="docs/screenshots/film-fund-roi.webp" width="260" alt="Film Development Fund return-on-subsidy ranking"> | <img src="docs/screenshots/kindergarten-enrolment-trend.webp" width="260" alt="Kindergarten and primary enrolment trend 2015 to 2025"> |
+| **Ferry + live ETA**<br>Static timetable joined with live vessel positions | **Film-fund ROI**<br>Box office ÷ funding — two datasets joined | **Enrolment trend**<br>Kindergarten → primary series, 2015–2025 |
+
 ## What it can do
 
 港數通 turns a natural-language question into a sourced, live answer:
