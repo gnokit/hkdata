@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "count": 38,
+  "count": 39,
   "datasets": [
     {
       "id": "hk-dpo-statistic-cal",
@@ -2119,6 +2119,38 @@
       "fallback_search_terms": []
     },
     {
+      "id": "transport-kmb-route-finder",
+      "title": "KMB Route Finder (A → B)",
+      "category": "transport",
+      "filename": "transport-kmb-route-finder.md",
+      "description": "# KMB Route Finder (A → B)",
+      "keywords": [
+        "data",
+        "department",
+        "finder",
+        "from",
+        "kmb",
+        "lwb",
+        "route",
+        "transport"
+      ],
+      "endpoint": "",
+      "format": "json",
+      "temporality": "real-time",
+      "join_keys": [
+        "period"
+      ],
+      "last_verified": "2026-10-07",
+      "known_quirks": [
+        "`/route-stop/` gives **stop IDs only**; names/coordinates come from `/stop/`.",
+        "`eta` is an ISO-8601 timestamp in `+08:00` (HKT); `rmk_en: \"Scheduled Bus\"`",
+        "Directions: `/route/` `bound` uses `O`/`I`, but the `/route-stop/` and `/eta/`",
+        "LWB routes share the same API under the KMB base path.",
+        "Chinese termini: `orig_tc`/`dest_tc` are Traditional, `orig_sc`/`dest_sc` Simplified."
+      ],
+      "fallback_search_terms": []
+    },
+    {
       "id": "hk-td-tis_21-etakmb",
       "title": "KMB/LWB Bus Real-time ETA",
       "category": "transport",
@@ -2729,7 +2761,7 @@
       "fallback_search_terms": []
     },
     {
-      "id": "hk-censtatd-tablechart-110-02001`\n- **API:** `https://www.censtatd.gov.hk/api/get.php?id=110-02001&lang=en&full_series=1`\n- **Reference:** [population-census.md](population-census.md)\n\n### Template Structure\n\nAll responses should include:\n1. **Direct Answer** — The factual answer to the query\n2. **Methodology** — Which workflow steps were followed (with checkmarks)\n3. **Dataset Details** — Source, ID, API endpoint, documentation reference\n4. **Data Quality Note** — Update frequency, data date, any caveats",
+      "id": "hk-censtatd-tablechart-110-02001`\n- **API:** `https://www.censtatd.gov.hk/api/get.php?id=110-02001&lang=en&full_series=1`\n- **Reference:** [population-census.md](population-census.md)\n\n### Template Structure\n\nAll responses should include:\n1. **Direct Answer** — The factual answer to the query\n2. **Methodology** — Which workflow steps were followed (with checkmarks)\n3. **Dataset Details** — Source, ID, API endpoint, documentation reference\n4. **Data Quality Note** — Update frequency, data date, any caveats\n\nCitation rules (see also the *Answer Contract* in [`SKILL.md`](../SKILL.md)):\n\n- Always state the **data's own timestamp in HKT**, separately from \"retrieved at\".\n  e.g. *\"figures are as at 2026-03-13 (HKT); retrieved 2026-10-07 09:40 HKT.\"*\n- Always give the **dataset ID** and the **exact endpoint URL** you queried.\n- **Rows → table, trend → chart.** A chart must label its source dataset and\n  temporality (real-time / historical / static).\n- A procedural question (\"how do I apply…\", \"what forms…\") is rarely a dataset:\n  data.gov.hk carries statistics and fee tables, not application steps. Point to\n  the department's site and say so, instead of logging a \"dataset miss\".",
       "title": "Workflow Guides",
       "category": "",
       "filename": "workflow-guides.md",

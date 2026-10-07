@@ -5,12 +5,12 @@ description: >
   transport, weather, population, finance, health, employment, commerce,
   recreation, education, city services. Use when the user asks about HK
   statistics, government datasets, transport schedules, weather, facilities or
-  demographics. Trigger phrases: "hkdata", "Hong Kong data", "data.gov.hk",
-  "HK statistics", "HK population", "HK weather", "MTR/bus schedule",
-  "HK public holidays", "badminton courts", "schools in HK".
+  demographics. Trigger phrases: "hkdata", "港數通", "港数通", "Hong Kong data",
+  "data.gov.hk", "HK statistics", "HK population", "HK weather",
+  "MTR/bus schedule", "HK public holidays", "badminton courts", "schools in HK".
 ---
 
-# HK Data.gov.hk Query Tool
+# 港數通 · hkdata — Hong Kong Open Data Query Tool
 
 Structured discovery workflow for finding, testing, and documenting datasets on
 Hong Kong's open data portal (data.gov.hk).
@@ -18,9 +18,6 @@ Hong Kong's open data portal (data.gov.hk).
 **Scope: Hong Kong data.gov.hk dataset discovery and query only.** General web
 search, non-HK data, or non-government sources are handled by the agent's native
 web search tools, not this skill.
-
-> **Out-of-scope redirect:** This request is outside the scope of hkdata.
-> For non-Hong-Kong data or non-government sources, use web search directly.
 
 Before Steps 2–5, create a task list with one item per step; mark each `in progress`
 before executing and `completed` when done, adding a sub-task for any fallback.
@@ -41,8 +38,11 @@ Semantic search over past experiences — **positive** (a working recipe) and
 
 - **positive** → read the cited `references/...md`, follow the recipe, then run
   Steps 3–4 to refresh live endpoints.
-- **negative** (`outcome: unavailable`) → not on data.gov.hk; answer accordingly
-  **without re-searching**.
+- **negative**, `outcome: unavailable` → the data does not exist on data.gov.hk;
+  answer accordingly **without re-searching**.
+- **negative**, `outcome: pitfall` → this *path* is dead/retired but the data may
+  still live elsewhere. Do **not** stop: follow the card's `caveats`/`method`
+  (e.g. a retired endpoint, a moved portal) and re-route.
 - no useful hit → proceed to Step 2.
 
 Experiences carry a `date` and can be superseded — check it, and still run Steps 3–4
@@ -74,13 +74,28 @@ at Step 1 without redoing Steps 2–4.
 
 ```bash
 bash ./hk.sh experience-log --kind positive \
-  --topic "<short description>" --pattern "<example query>" --dataset <dataset-id> \
+  --topic "<question category>" --pattern "<query with placeholders>" --dataset <dataset-id> \
   --method "<what worked>" <!-- when a reference doc exists, cite it in --source -->
 bash ./hk.sh log-render
 ```
 
-It indexes the card immediately; if Ollama is down it only appends to
-`data/experiences.jsonl` — run `experience-embed` later.
+It indexes the card immediately; if the embedding backend (e.g. Ollama) is down it
+only appends to `data/experiences.jsonl` — run `experience-embed` later.
+
+**Keep cards generic** so one card serves a whole class of questions, not one
+specific query:
+
+- `--topic` is the *question category* (e.g. "KMB A→B route finder"), not this
+  instance's stop names.
+- `--pattern` uses placeholders (`A`, `B`, `X`); put the concrete example in
+  `--caveat`/`--method`, never in the topic. A specific card would shadow the
+  general one at Step 1.
+- `--outcome` is a **controlled vocabulary**: `verified` / `located` / `resolved`
+  (positive) or `unavailable` / `pitfall` (negative). Descriptive results ("18
+  stations", "✅ found") belong in `--method`, not `--outcome`.
+- `pitfall` ≠ `unavailable`: `unavailable` means the data isn't on data.gov.hk;
+  `pitfall` means this path is dead but the data may be elsewhere. Log `pitfall`
+  with `--kind negative` and put the re-route in `--method`.
 
 **Write a reference doc only when the recipe is non-trivial** (endpoint quirks,
 multi-endpoint joins, proxy logic): `cp ./references/template.md
@@ -95,6 +110,8 @@ documentation pending" and list the failures:
 - [ ] One experience card recorded (positive or negative — never both for the same outcome)
 - [ ] `log-render` ran after the write
 - [ ] Repeat test: the same query can now be answered at Step 1 without Steps 2–4
+- [ ] Near-miss test: a *different wording* of the same question class also ranks
+      the card first at Step 1 (guards against over-fitting the exact query)
 
 ## Command Summary
 
@@ -105,6 +122,7 @@ documentation pending" and list the failures:
 | `bash ./hk.sh catalog-search "<query>"` | ChromaDB search over the full catalog (Step 2) |
 | `bash ./hk.sh info "<id>" …` | CKAN `package_show` metadata (Steps 3–4) |
 | `bash ./hk.sh test "<url>" …` | Test endpoint and detect format (Steps 3–4) |
+| `bash ./hk.sh embed-status` | Active embedding backend + store match |
 
 The full CLI list (build, refresh, `reindex`, `log-*`) is in [`README.md`](README.md).
 
@@ -122,6 +140,21 @@ If Steps 3–4 reveal no dataset answers the query, your answer MUST:
 2. Include an exploration log listing each dataset examined and why it didn't fit
 3. If a proxy exists, use it with an explicit caveat
    ([`references/workflow-guides.md`](references/workflow-guides.md) has the template)
+
+## Answer Contract (when a dataset is found)
+
+Every successful answer MUST include, alongside the direct answer:
+
+1. **Dataset ID** (and the source department) — so the claim is re-checkable.
+2. **Endpoint** actually queried (URL).
+3. **Data timestamp** of the figures themselves, in **HKT**, distinct from
+   "retrieved at" — e.g. "figures are as at 2026-03-13 (HKT)".
+
+Presentation: multiple rows → a table; a trend → a chart (with the source dataset
+and its temporality labelled). A procedural/form question ("how do I apply …") is
+rarely a dataset — data.gov.hk holds statistics/fee tables, not application
+steps; redirect to the department's site and say so rather than reporting a
+"dataset miss".
 
 ## Deeper Guidance
 

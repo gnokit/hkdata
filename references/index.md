@@ -40,6 +40,7 @@ Master index of all verified Hong Kong open data APIs.
 | Elderly Service Statistics | welfare | Annual recipient counts for community support, community care, residential care (2024) | [welfare-elderly-services.md](welfare-elderly-services.md) |
 | Air Quality (AQHI + Pollutants) | environment | Real-time AQHI + PM2.5/PM10/NO2/SO2/O3/CO at 18 stations (EPD RSS/XML + DPO JSON, hourly) | [environment-air-quality.md](environment-air-quality.md) |
 | Ferry Services (Timetables + ETA) | transport | Static timetables (TD, all routes) + real-time ETA (Sun Ferry, HKKF — 1-min, vessel GPS) | [transport-ferry.md](transport-ferry.md) |
+| KMB Route Finder | transport | A→B bus route discovery: route termini → stop IDs → live ETA (3-endpoint join) | [transport-kmb-route-finder.md](transport-kmb-route-finder.md) |
 | Visitor Arrivals | tourism | Monthly visitor arrivals by nationality/region (e.g., Chinese Mainland) | [tourism-arrivals.md](tourism-arrivals.md) |
 | Hotel Room Occupancy Rate | tourism | Monthly hotel room occupancy rate (%) | [tourism-hotel-occupancy.md](tourism-hotel-occupancy.md) |
 
@@ -47,6 +48,7 @@ Master index of all verified Hong Kong open data APIs.
 
 ### Transport
 - [transport-kmb.md](transport-kmb.md) - KMB/LWB bus ETA
+- [transport-kmb-route-finder.md](transport-kmb-route-finder.md) - KMB A→B route discovery (termini → stops → ETA)
 - [transport-mtr.md](transport-mtr.md) - MTR real-time train data
 - [transport-digest.md](transport-digest.md) - Monthly traffic and transport digest
 - [transport-port-cargo.md](transport-port-cargo.md) - Port cargo throughput (quarterly, JSON API)

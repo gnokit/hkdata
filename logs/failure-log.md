@@ -4,6 +4,39 @@ Rendered from `data/experiences.jsonl` — **negative** experiences (dead ends).
 Do not edit by hand; record an experience and run `hkdata.py log-render`.
 
 
+### 2026-10-07 | geodata.gov.hk retired portal
+
+- **Kind:** negative
+- **Category:** location
+- **Method:** geodata.gov.hk has been retired; its geo-spatial endpoints moved to the CSDI Portal — use www.map.gov.hk/gs/api/... (see the CSDI API docs) instead.
+- **Outcome:** pitfall
+- **Caveats:** Any reference to a geodata.gov.hk URL is a dead path — re-route to map.gov.hk/gs/api
+- **Source:** manual
+
+---
+
+### 2026-10-07 | Endpoint 403 without User-Agent
+
+- **Kind:** negative
+- **Category:** 通用模式
+- **Method:** Some department APIs (Censtatd, LandsD, map APIs) return 403 to the bare Python urllib agent; the hkdata CLI already sends a browser-like User-Agent on every fetch — reuse that header in any ad-hoc fetch instead of assuming the endpoint is down.
+- **Outcome:** pitfall
+- **Caveats:** curl works because it sends a User-Agent by default; urllib without headers does not
+- **Source:** manual
+
+---
+
+### 2026-10-07 | Procedural / application-form questions
+
+- **Kind:** negative
+- **Category:** 通用模式
+- **Method:** data.gov.hk carries statistics and fee tables, not application steps or forms. Redirect procedural questions to the department's website and say so, rather than logging a 'dataset miss'.
+- **Outcome:** pitfall
+- **Caveats:** Do not treat a procedural question as a missing dataset
+- **Source:** manual
+
+---
+
 ### 2026-09-27 | 交通 — 渡輪 (Transport — Ferry) — TD licensed ferry
 
 - **Kind:** negative

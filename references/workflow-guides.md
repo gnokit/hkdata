@@ -33,6 +33,17 @@ All responses should include:
 3. **Dataset Details** — Source, ID, API endpoint, documentation reference
 4. **Data Quality Note** — Update frequency, data date, any caveats
 
+Citation rules (see also the *Answer Contract* in [`SKILL.md`](../SKILL.md)):
+
+- Always state the **data's own timestamp in HKT**, separately from "retrieved at".
+  e.g. *"figures are as at 2026-03-13 (HKT); retrieved 2026-10-07 09:40 HKT."*
+- Always give the **dataset ID** and the **exact endpoint URL** you queried.
+- **Rows → table, trend → chart.** A chart must label its source dataset and
+  temporality (real-time / historical / static).
+- A procedural question ("how do I apply…", "what forms…") is rarely a dataset:
+  data.gov.hk carries statistics and fee tables, not application steps. Point to
+  the department's site and say so, instead of logging a "dataset miss".
+
 ---
 
 ## Cross-Dataset Composition
@@ -46,6 +57,14 @@ Some questions require combining two or more datasets:
    - Use `normalize_district()` from the Python CLI or standardize to the Censtatd form
 3. **Fetch both datasets**, normalize keys in Python, and join
 4. **Cite both datasets** in the answer and state the join key
+
+**Broad first, then narrow.** A single phrase often maps to several datasets. Ask
+"what datasets mention `<concept>` at all" (`catalog-search "<concept>"`) before
+picking one. Example — *"where can I park?"* is not one dataset: it is
+**government car parks** (`city-parking`) + **on-street meters** + **non-metered
+sensor spaces**, each a separate source that must be combined for a full answer.
+When a question spans several datasets, say so and enumerate them rather than
+answering from the first hit.
 
 ---
 
@@ -78,6 +97,14 @@ State the temporality in the answer when it affects interpretation (e.g., "last 
 ## Known Broken Endpoints
 
 - **Censtatd `wbr.html?download_csv=1`** — returns an HTML viewer page, not CSV. Use the equivalent Censtatd JSON API (`api/get.php?id=<table-id>`) instead.
+- **`geodata.gov.hk` is retired.** Geo-spatial endpoints that used to live there
+  have moved to the CSDI Portal — `www.map.gov.hk/gs/api/...` (see the CSDI API
+  docs). Do not keep hitting the old `geodata.gov.hk` URLs; treat any reference
+  to them as a `pitfall` and re-route to `map.gov.hk`.
+- **403 without a User-Agent.** Some department APIs (Censtatd, LandsD, map APIs)
+  reject the bare Python `urllib` agent. The CLI sets a browser-like User-Agent on
+  every fetch; if you hit a 403 from your own script, add that header rather than
+  assuming the endpoint is down.
 
 ---
 
@@ -92,7 +119,7 @@ State the temporality in the answer when it affects interpretation (e.g., "last 
 | All datasets failed | Abort entirely; return "No suitable dataset found on data.gov.hk" with exploration log |
 | Unexpected API schema | Report exact mismatch; do not attempt to parse |
 | API endpoint returns error | Check if auth is required; if not, record a negative experience (`experience-log --kind negative`) |
-| Endpoint rejects the Python client | Retry with `curl` — some endpoints block non-browser clients even though the CLI already sets a browser-like User-Agent |
+| Endpoint rejects the Python client | Retry with `curl` — some endpoints block non-browser clients; the CLI already sends a browser-like User-Agent, so copy that header into any ad-hoc fetch |
 
 **Stale data rule:** If the skill falls back to cached/local data, the output MUST include a visible warning:
 ```
@@ -156,6 +183,45 @@ Add a mapping there when a common abbreviation misses.
 Documents are keyed by a `text_hash`, so `catalog-embed` only re-embeds changed
 datasets; aliases and fusion changes need no re-embedding.
 
+## Embedding backend (pluggable)
+
+Embeddings default to local Ollama (`qwen3-embedding:0.6b`) but any embedding
+service can be plugged in. Two backends ship built-in — `ollama` and `openai`
+(any OpenAI-compatible `/v1/embeddings` API) — and custom backends drop in
+through the `Embedder` interface (see [`SETUP.md`](../SETUP.md) *Integrating a new
+backend*).
+
+```bash
+export HKDATA_EMBED_PROVIDER=openai              # or "ollama" (default)
+export HKDATA_EMBED_MODEL=text-embedding-3-small
+export HKDATA_EMBED_URL=https://api.openai.com/v1/embeddings
+export HKDATA_EMBED_API_KEY=sk-...
+bash ./hk.sh catalog-embed                       # rebuild with the new provider
+bash ./hk.sh experience-embed
+bash ./hk.sh embed-status                        # confirm "match"
+```
+
+The same flags exist per-command (`--provider`, `--model`, `--url`, `--api-key`),
+and `--provider` also accepts a dotted path `pkg.module:ClassName` to a custom
+backend. Each vector stores a **fingerprint** of its provider+model; switching
+providers changes the fingerprint, so `catalog-embed`/`experience-embed` re-embed
+everything instead of silently mixing incompatible embedding spaces, and
+`embed-status` reports a MISMATCH until you do.
+
+> **Different providers = different vector spaces.** A store built with Ollama must
+> be rebuilt from scratch (not searched) when you switch to an API provider.
+
+## Experience outcomes: `unavailable` vs `pitfall`
+
+Two kinds of negative card (see Step 1 of [`SKILL.md`](../SKILL.md)):
+
+| Outcome | Meaning | Step 1 behaviour |
+|---|---|---|
+| `unavailable` | The data is not published on data.gov.hk at all | Stop; answer "not available" (optionally with a proxy) |
+| `pitfall` | This *path* is dead/retired, but the data may live elsewhere | Re-route via the card's `method`/`caveats`, then continue |
+
+Log `pitfall` only when there is a concrete re-route; otherwise `unavailable`.
+
 ## Known Failure Patterns
 
 | Symptom | Root Cause | Permanent Fix |
@@ -164,6 +230,7 @@ datasets; aliases and fusion changes need no re-embedding.
 | `catalog-search` says "ChromaDB is not installed" | chromadb is missing from the venv | `.venv/bin/pip install -r requirements-vectors.txt`, then retry |
 | Chinese abbreviation (e.g. `康文署`) not found | Abbreviations are coined truncations; the full form (`康樂及文化事務署`) is in the tc metadata | Dense embeddings bridge it (cos ≈ 0.79) and `aliases.json` expands it deterministically — add a mapping if one is missing |
 | A dataset the CKAN API used to return is now missing | CKAN `package_search` was retired (Solr covered only ~631/3,822) | Use `catalog-search`, which covers the full catalog |
+| A `geodata.gov.hk` URL 404s or serves nothing | The geodata.gov.hk portal was retired | Re-route to the CSDI Portal `www.map.gov.hk/gs/api/...`; log a `pitfall` card |
 | Subagent fails to create reference file | Permission issue or wrong path | Verify references are written to `./references` |
 | Agent tool syntax error | Legacy or over-split spawning | At most one subagent; use your agent tool's equivalent of a single coder subagent with shell access |
 

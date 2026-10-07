@@ -1,77 +1,101 @@
-# hkdata
+# 港數通 · hkdata
 
-A discovery and search toolkit for **Hong Kong government open data** ([DATA.GOV.HK](https://data.gov.hk)).
+**香港政府開放數據 × AI Agent 技能** — a self-learning discovery and query
+toolkit for [DATA.GOV.HK](https://data.gov.hk) open data.
 
-It answers questions like *"any government gym room in Cheung Sha Wan?"*, *"what's the air quality index right now?"*, or *"are schools closing because of falling enrolment?"* by finding the right dataset and querying its official API — with an honest answer when the data doesn't exist.
+> **中文版** → [README.zh-HK.md](README.zh-HK.md)
 
-It is designed as a **skill for AI agents**: [`SKILL.md`](SKILL.md) defines the discovery workflow an agent follows, and the CLI works standalone for humans. The instructions are plain Markdown, so any agent with shell and file access can use it — it is not tied to a particular agent runtime.
+[![license](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![python](https://img.shields.io/badge/python-3.8%2B-blue.svg)](https://www.python.org/)
+[![datasets](https://img.shields.io/badge/datasets-3%2C822-blueviolet.svg)](https://data.gov.hk)
+[![version](https://img.shields.io/badge/version-0.3.0-lightgrey.svg)](scripts/hkdata/__init__.py)
 
-## Why not just use the portal's search API?
+Ask it questions like *「長沙灣有冇政府健身室？」* or *"what's the air quality
+right now?"* and it finds the right official dataset, queries its live API, and
+answers **with an honest "no dataset exists" when that's the truth**.
 
-DATA.GOV.HK's CKAN `package_search` is **Solr-backed and indexes only ~631 of the ~3,822 datasets** that the DB-backed `package_list` returns. It returns zero results for keywords that definitely have datasets — `badminton`, `vessel`, `AQHI`, `ferry`, and most Chinese terms. This repo works around that by building a complete offline catalog from the reliable endpoints (`package_list` + `package_show`) and searching it locally.
-
-## How it works
-
+```text
+You    : how many PRH public housing estates are in Kwun Tong?
+港數通  : 14 estates (as at 2026-06-22, HKT).
+          Source: Housing Authority PSI API
+          Dataset: hk-housing-eslocator-eslocator
+          Endpoint: https://data.housingauthority.gov.hk/psi/rest/export/prh-estates
+          Caveat: district names use "&" (Central & Western) — normalise before joining.
 ```
-catalog-sync --full --lang en,tc   crawl the whole catalog (resumable)
-        │                          package_list seed -> package_show per dataset
+
+---
+
+## What it can do
+
+港數通 turns a natural-language question into a sourced, live answer:
+
+- **Search the whole catalog** — all ~3,822 datasets on data.gov.hk, in English
+  **and** 繁體中文, not a partial index.
+- **Understand Chinese** — `康文署` resolves to `康樂及文化事務署`, so
+  Cantonese / Traditional-Chinese queries just work.
+- **Query the live API** — finds the right endpoint, tests it, and auto-detects
+  JSON / XML / CSV to pull the current data.
+- **Answer honestly** — every answer cites the dataset ID, endpoint, and the
+  data's own HKT timestamp, and says "no dataset" when that's the truth.
+- **Remember** — each discovery is saved as a positive/negative memory card, so
+  the next similar question answers instantly.
+
+Under the hood it crawls data.gov.hk once into a local, PII-free catalog and
+searches it with hybrid retrieval (dense multilingual embeddings + keyword):
+
+```text
+catalog-sync --full --lang en,tc    crawl the whole catalog (resumable)
+        │                            package_list seed → package_show per dataset
         ▼
-data/catalog/*.jsonl               8 shards, 500 datasets each, PII-free
+data/catalog/*.jsonl                8 shards, 500 datasets each, PII-free
         │
-catalog-embed                      embed with a local Ollama model
+catalog-embed                       embed with a local (or remote) model
         ▼
-.cache/catalog/chroma/             ChromaDB stores (gitignored)
-   ├── hkdata_datasets             "what datasets exist"
-   └── hkdata_experiences          "how to answer this question"  (± lessons)
+.cache/catalog/chroma/              ChromaDB stores (gitignored)
+   ├── hkdata_datasets              "what datasets exist"
+   └── hkdata_experiences           "how to answer this question"  (± lessons)
 ```
 
-The agent workflow in [`SKILL.md`](SKILL.md) is:
+## What makes it different: it learns
 
-1. **`experience-search`** — semantic lookup of past **positive and negative** experiences. A hit short-circuits the search; a negative hit ("not on data.gov.hk") avoids re-searching.
-2. **`catalog-search`** — semantic + keyword search over all 3,822 datasets.
-3. **`info`** → **`test`** — inspect the dataset and test its endpoint.
-4. **`experience-log`** — record the outcome so the next similar question hits at step 1.
+Every discovery is written back as a **memory card** (positive *or* negative), so
+the next similar question is answered instantly instead of re-searched:
 
-- **Bilingual:** en + Traditional Chinese metadata (`--lang en,tc`), so `康文署` resolves to `康樂及文化事務署`.
-- **Hybrid retrieval:** ChromaDB dense KNN fused with a case-insensitive keyword pass (`references/aliases.json` expands common HK abbreviations).
-- **Experience memory:** `data/experiences.jsonl` (committed) holds ~112 positive/negative cards derived from the curated references and logs, each dated so stale lessons are visible. Discoveries are recorded as cards per Step 5 of [`SKILL.md`](SKILL.md) — a reference doc in `references/` is only written when the recipe is non-trivial.
-- **No finished answers are embedded** — cards point to datasets and methods; the agent still queries the live endpoint.
+```text
+1. experience-search "gym room Cheung Sha Wan"     → no hit
+2. catalog-search   "gym room"                     → hk-lcsd-facility-facility-fit
+3. info + test the endpoint                         → live JSON, 87 rooms
+4. experience-log   --outcome located ...          → memory written
+5. experience-search "fitness room Sham Shui Po"   → answered at step 1 ✓
+```
 
-## Requirements
+Stale cards are dated and can be superseded; the store records both *what worked*
+and *what's a dead end*, so it stops repeating past failures.
 
-| Component | Purpose |
+| | 港數通 |
 |---|---|
-| `python3` | the CLI is stdlib-only |
-| [`chromadb`](requirements-vectors.txt) | search store |
-| [Ollama](https://ollama.com) + `qwen3-embedding:0.6b` | local multilingual embeddings |
+| **Bilingual** | English + 繁體中文 metadata (`康文署` → `康樂及文化事務署`) |
+| **Hybrid search** | ChromaDB dense embeddings fused with a keyword pass + abbreviation aliases |
+| **Self-learning** | every discovery logged as a positive/negative card |
+| **Pluggable embeddings** | local Ollama by default; any OpenAI-compatible API (or your own backend) |
+| **Honest by contract** | cites dataset ID, endpoint, and the data's own HKT timestamp |
+| **Scoped** | Hong Kong government data only — everything else is redirected |
 
-## Setup
-
-Full first-run instructions are in **[SETUP.md](SETUP.md)**. In short:
+## Quick start
 
 ```bash
 python3 -m venv .venv
 .venv/bin/pip install -r requirements-vectors.txt
 ollama pull qwen3-embedding:0.6b
+
+bash ./hk.sh catalog-embed                 # ~10 min (shards are committed, no crawl)
+bash ./hk.sh experience-embed
+bash ./hk.sh catalog-search "badminton courts"
+bash ./hk.sh catalog-search "康文署羽毛球場"
 ```
 
-The catalog shards (`data/catalog/`) are committed, so a fresh clone only needs to build the vector store:
-
-```bash
-bash ./hk.sh catalog-embed      # ~10 min for 3,822 datasets
-```
-
-To refresh from source: `catalog-sync --full --lang en,tc` (~2 h, resumable) or `catalog-sync --refresh` (14-day RSS delta, ~2 min).
-
-### Shared install (any project)
-
-Symlink the repo into the agents' skills folder so other codebases can use it; one venv, one Ollama model, and one vector store then serve every project:
-
-```bash
-ln -s "$(pwd)" ~/.agents/skills/hkdata
-```
-
-`SKILL.md`'s commands assume the skill directory as cwd; from other projects, call `bash ~/.agents/skills/hkdata/hk.sh <subcommand> …`.
+The catalog shards in `data/catalog/` are committed, so a fresh clone **only needs
+to build the vector store** — no crawl. Full setup is in [SETUP.md](SETUP.md).
 
 ## Usage
 
@@ -87,9 +111,10 @@ bash ./hk.sh catalog-search "康文署羽毛球場" --top-n 5
 bash ./hk.sh info hk-lcsd-facility-facility-fit
 bash ./hk.sh test "http://www.lcsd.gov.hk/datagovhk/facility/facility-fitrm.json"
 
-# Curated verified datasets + catalog coverage
+# Curated verified datasets + catalog coverage + embedding backend
 bash ./hk.sh search-local "enrolment"
 bash ./hk.sh catalog-status
+bash ./hk.sh embed-status
 ```
 
 ### Commands
@@ -97,38 +122,65 @@ bash ./hk.sh catalog-status
 | Command | Purpose |
 |---|---|
 | `experience-search "<query>"` | Semantic search over past experiences (±) — Step 1 |
-| `experience-log --kind positive\|negative …` | Record + index an experience |
+| `experience-log --kind positive\|negative …` | Record + index an experience (Step 5) |
 | `experience-embed` / `experience-migrate` | Build / regenerate the experience index |
 | `catalog-search "<query>"` | ChromaDB hybrid search over the full catalog — Step 2 |
-| `catalog-sync [--full] [--refresh] [--lang en,tc]` | Seed/crawl/refresh the offline catalog |
+| `catalog-sync [--full] [--refresh] [--lang en,tc]` | Seed / crawl / refresh the offline catalog |
 | `catalog-embed` | Build the ChromaDB vector store |
 | `catalog-status` | Coverage and vector-store report |
+| `embed-status` | Active embedding backend + store match |
 | `info "<id>"` | Dataset metadata (`package_show`) |
-| `test "<url>"` | Test an endpoint and detect JSON/XML/CSV |
+| `test "<url>"` | Test an endpoint and detect JSON / XML / CSV |
 | `search-local "<query>"` | Search the curated reference docs |
 | `reindex` | Rebuild `references/search-index.json` from the curated docs |
-| `log-search` / `log-render` | Query/regenerate the failure & strategy logs |
-| `bash ./hk.sh "<subcommand>"` | Single entry point — picks the venv interpreter when present, else `python3` |
-| `bash ./scripts/hkdata-info.sh "<id>"` | Backward-compatible wrapper for `info` |
+| `log-search` / `log-render` | Query / regenerate the failure & strategy logs |
 
-All commands run through `bash ./hk.sh`, which picks the `.venv` interpreter automatically when chromadb is needed and falls back to plain `python3` otherwise — no need to choose the interpreter yourself.
+All commands run through `bash ./hk.sh`, which picks the `.venv` interpreter
+automatically when `chromadb` is needed and falls back to plain `python3`
+otherwise — no need to choose.
+
+### Embedding backends
+
+Local Ollama (`qwen3-embedding:0.6b`) is the default. Switch to any
+OpenAI-compatible API, or bring your own backend via the `Embedder` interface:
+
+```bash
+export HKDATA_EMBED_PROVIDER=openai
+export HKDATA_EMBED_MODEL=text-embedding-3-small
+export HKDATA_EMBED_URL=https://api.openai.com/v1/embeddings
+export HKDATA_EMBED_API_KEY=sk-...
+bash ./hk.sh catalog-embed && bash ./hk.sh experience-embed
+```
+
+See [SETUP.md](SETUP.md) *"Integrating a new backend"* for the interface.
 
 ## Layout
 
 ```
 hk.sh                     single CLI entry point (picks venv or python3)
-SKILL.md                  discovery workflow (the entrypoint)
+SKILL.md                  discovery workflow (the agent entrypoint)
 AGENTS.md                 notes for agents using the skill
-scripts/hkdata/           CLI (catalog.py, vectors.py, index.py, logs.py, …)
+scripts/hkdata/           CLI (catalog.py, vectors.py, embeddings.py, index.py, …)
 data/catalog/             sanitized catalog shards (committed)
 references/               curated dataset docs + registry + aliases
 logs/                     rendered views (failure log = negative, strategy registry = positive)
 tests/                    pytest suite
 ```
 
+## Scope
+
+**Hong Kong government data from data.gov.hk only.** Non-HK data, non-government
+sources, or general web queries are out of scope and redirected to the agent's
+native web search — this keeps the store focused and the answers trustworthy.
+
 ## Data source & attribution
 
-All dataset metadata comes from **[DATA.GOV.HK](https://data.gov.hk)** and remains subject to its [terms and conditions](https://data.gov.hk/en/terms-and-conditions). The committed shards in `data/catalog/` are a **sanitized projection** of `package_show` responses: personal contact details (author/maintainer emails and phones) are stripped, and only the fields needed for search are retained. The JSONL store can be regenerated at any time with `catalog-sync`.
+All dataset metadata comes from **[DATA.GOV.HK](https://data.gov.hk)** and remains
+subject to its [terms and conditions](https://data.gov.hk/en/terms-and-conditions).
+The committed shards in `data/catalog/` are a **sanitized projection** of
+`package_show` responses: personal contact details (author/maintainer emails and
+phones) are stripped, and only the fields needed for search are retained. The JSONL
+store can be regenerated at any time with `catalog-sync`.
 
 ### Further reading
 
@@ -145,8 +197,9 @@ All dataset metadata comes from **[DATA.GOV.HK](https://data.gov.hk)** and remai
 
 ## License
 
-[MIT](LICENSE) for the code and documentation. The underlying government data is covered by the DATA.GOV.HK terms of use, not the MIT licence.
+[MIT](LICENSE) for the code and documentation. The underlying government data is
+covered by the DATA.GOV.HK terms of use, not the MIT licence.
 
 ---
 
-_Last updated 2026-09-27 — offline catalog (`package_list` + `package_show` → JSONL shards → ChromaDB search); CKAN `package_search` retired._
+_港數通 · hkdata — 香港政府開放數據，問得準，答得真。_
