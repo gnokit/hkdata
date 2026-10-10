@@ -19,6 +19,9 @@ __pycache__/
 tmp/
 *.log
 
+# End-to-end clean-clone test (disposable)
+e2e-test/
+
 # Secrets (none expected, but guard anyway)
 .env
 .env.*
