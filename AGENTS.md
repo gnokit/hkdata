@@ -99,6 +99,22 @@ Only Hong Kong government data from data.gov.hk. Non-HK data, non-government sou
 
 For complex discovery you may spawn a **single** subagent with shell and file access to run Steps 2–5 end-to-end. Do not split into multiple subagents. Use the highest-reasoning model available in your agent tool. A worked example and response templates are in [`references/workflow-guides.md`](references/workflow-guides.md).
 
+## End-to-end test (clean clone)
+
+Verifies the **public** artifact actually runs — an agent following `SETUP.md` then `SKILL.md` from a fresh clone. Run it before a release or after large changes. The private knowledge layer (`data/experiences.jsonl`, `references/*.md`, `references/index.md`, `references/search-index.json`, `logs/`, `.cache/`) is gitignored; a clone carrying only the engine is exactly what the test checks.
+
+1. `e2e-test/` is gitignored. Clean it and clone the **public remote** (not a local copy):
+   ```bash
+   rm -rf e2e-test/hkdata && mkdir -p e2e-test
+   git clone https://github.com/gnokit/hkdata.git e2e-test/hkdata
+   ```
+2. Spawn **one** high-reasoning subagent (shell + file access). It must:
+   - work only inside `e2e-test/hkdata`; never read/write the working repo or `~/.agents/skills/hkdata`;
+   - **not** use `SKILL.md`'s root-resolution snippet — the `~/.agents/skills/hkdata` symlink points at the private repo and would silently contaminate the run. Set `export HKDATA_SKILL_DIR=$PWD` inside the clone and run `bash ./hk.sh …`;
+   - follow `SETUP.md` steps 1–5, then `SETUP.md` §6 — the 3 hard questions through the **full** `SKILL.md` loop (Steps 1→5, one `experience-log` card each);
+   - write raw commands + output to `e2e-test/REPORT.md` with a verdict and a per-finding PASS/FAIL table.
+3. Expect ~59 tracked files and a green `bash ./hk.sh`-driven run; the suite needs `requirements-dev.txt`. No BLOCKER = pass.
+
 ## Keeping SKILL.md minimal
 
 `SKILL.md` is the **runtime entrypoint** — what a skill consumer reads to answer a
