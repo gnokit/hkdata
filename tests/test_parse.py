@@ -133,3 +133,18 @@ def test_parse_data_xlsx_does_not_crash():
 def test_parse_data_xls_by_magic():
     result = parse_data(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1\x00\x00")
     assert result["format"] == "xls"
+
+
+def test_detect_format_xlsx_content_type_with_xml_substring():
+    # The real XLSX Content-Type contains "xml" (openxmlformats/spreadsheetml)
+    # but must be treated as a spreadsheet, never as XML.
+    ct = ("application/vnd.openxmlformats-officedocument."
+          "spreadsheetml.sheet")
+    assert detect_format(b"PK\x03\x04stuff", content_type=ct,
+                         url="http://x/a.xlsx") == "xlsx"
+
+
+def test_detect_format_xlsx_content_type_without_magic():
+    ct = ("application/vnd.openxmlformats-officedocument."
+          "spreadsheetml.sheet")
+    assert detect_format(b"\x00\x01binary", content_type=ct) == "xlsx"

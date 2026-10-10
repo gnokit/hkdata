@@ -131,23 +131,29 @@ def looks_like_html(data: bytes) -> bool:
 
 
 def detect_format(data: bytes, content_type: Optional[str] = None, url: Optional[str] = None) -> str:
-    """Detect the data format from Content-Type, URL, or content sniffing."""
+    """Detect the data format from magic bytes, Content-Type, URL, or content sniffing."""
+    # Magic bytes win: an XLSX/ZIP/PDF is binary regardless of its Content-Type
+    # (an XLSX Content-Type contains "xml" via "openxmlformats"/"spreadsheetml").
+    binary = detect_binary(data, url)
+    if binary:
+        return binary
+
     if content_type:
         ct = content_type.lower()
         if "json" in ct:
             return "json"
+        if "spreadsheet" in ct or "excel" in ct or "officedocument" in ct:
+            return "xlsx"
+        if "zip" in ct:
+            return "zip"
+        if "pdf" in ct:
+            return "pdf"
         if "xml" in ct or "rss" in ct:
             return "xml"
         if "csv" in ct or "tab-separated" in ct or "text/tab-separated-values" in ct:
             return "csv"
         if "html" in ct:
             return "html"
-        if "pdf" in ct:
-            return "pdf"
-        if "zip" in ct:
-            return "zip"
-        if "spreadsheet" in ct or "excel" in ct:
-            return "xlsx"
 
     if url:
         url_lower = url.lower().split("?")[0]
@@ -163,10 +169,6 @@ def detect_format(data: bytes, content_type: Optional[str] = None, url: Optional
             return "zip" if url_lower.endswith(".zip") else "xls"
         if url_lower.endswith(".pdf"):
             return "pdf"
-
-    binary = detect_binary(data, url)
-    if binary:
-        return binary
 
     if looks_like_html(data):
         return "html"
