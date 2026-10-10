@@ -1,6 +1,7 @@
 import json
 
 from hkdata.parse import (
+    decode_text,
     detect_binary,
     detect_delimiter,
     detect_encoding,
@@ -148,3 +149,62 @@ def test_detect_format_xlsx_content_type_without_magic():
     ct = ("application/vnd.openxmlformats-officedocument."
           "spreadsheetml.sheet")
     assert detect_format(b"\x00\x01binary", content_type=ct) == "xlsx"
+
+
+# ---------------------------------------------------------------------------
+# HK text encodings: UTF-16 (BOM-less), Big5, HKSCS, GB18030
+# ---------------------------------------------------------------------------
+
+
+def test_detect_encoding_utf16_le_without_bom():
+    assert detect_encoding("name\tvalue\nfoo\t1".encode("utf-16-le")) == "utf-16-le"
+
+
+def test_detect_encoding_utf16_be_without_bom():
+    assert detect_encoding("name\tvalue\nfoo\t1".encode("utf-16-be")) == "utf-16-be"
+
+
+def test_detect_encoding_charset_hint_wins():
+    assert detect_encoding(b"\x80\x81\x82", "text/csv; charset=gb18030") == "gb18030"
+
+
+def test_decode_text_never_raises_on_unknown_bytes():
+    text, encoding = decode_text(bytes(range(256)))
+    assert isinstance(text, str)          # lossy fallback, no exception
+    assert "lossy" in encoding
+
+
+def test_parse_csv_big5_labels_and_decodes():
+    data = "地區,數目\n九龍,1".encode("big5")
+    result = parse_csv(data)
+    assert result["encoding"] == "big5"
+    assert result["headers"] == ["地區", "數目"]
+
+
+def test_parse_csv_gb18030_not_misread_as_big5():
+    # A GB18030 file is also valid Big5; it must be scored as GB18030, not mojibake.
+    data = "地区,数目\n九龙,1".encode("gb18030")
+    result = parse_csv(data)
+    assert result["encoding"] in ("gb18030", "gbk")
+    assert result["headers"] == ["地区", "数目"]
+
+
+def test_parse_csv_big5hkscs():
+    data = "地區,數目\n鰂魚涌".encode("big5hkscs")   # 鰂 is HKSCS-only
+    result = parse_csv(data)
+    assert result["encoding"] == "big5hkscs"
+    assert "鰂魚涌" in result["preview"][1]
+
+
+def test_parse_csv_utf8_chinese_labelled_utf8():
+    data = "地區,數目\n九龍,1".encode("utf-8")
+    result = parse_csv(data)
+    assert result["encoding"] == "utf-8"
+    assert result["headers"] == ["地區", "數目"]
+
+
+def test_parse_data_honours_charset_hint():
+    data = "地区,数目\n九龙,1".encode("gb18030")
+    result = parse_data(data, content_type="text/csv; charset=gb18030")
+    assert result["format"] == "csv"
+    assert result["encoding"] == "gb18030"

@@ -1,23 +1,152 @@
 """Format-aware parsing for data.gov.hk endpoints."""
 
+import codecs
 import csv
 import io
 import json
 import re
 import sys
 import xml.etree.ElementTree as ET
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 
-def detect_encoding(data: bytes) -> str:
-    """Detect common Unicode BOMs; default to utf-8."""
-    if data.startswith(b"\xff\xfe"):
+def _canonical_encoding(name: str) -> Optional[str]:
+    """Return the canonical codec name, or None if unknown."""
+    try:
+        return codecs.lookup(name).name
+    except LookupError:
+        return None
+
+
+def _charset_from_content_type(content_type: Optional[str]) -> Optional[str]:
+    """Extract a usable ``charset=`` value from an HTTP Content-Type header."""
+    if not content_type:
+        return None
+    match = re.search(r"charset\s*=\s*[\"']?([\w.:+-]+)", content_type, re.IGNORECASE)
+    if not match:
+        return None
+    return _canonical_encoding(match.group(1))
+
+
+# Ordered CJK fallbacks. Big5 / Big5-HKSCS are the common HK government
+# encodings and win ties; GB18030/GBK are tried too, but only when they decode
+# *more plausibly* (Big5 and GB18030 overlap heavily, and GB18030 decodes almost
+# any byte stream, so first-success alone would silently mis-decode one as the
+# other).
+_CJK_FALLBACKS = ("big5", "big5hkscs", "gb18030", "gbk")
+
+# Non-ASCII ranges that are plausible in real HK text. Anything else (enclosed
+# alphanumerics, arrows, private-use area, etc.) is treated as a mojibake signal.
+_ALLOWED_RANGES = (
+    (0x3400, 0x4DBF),   # CJK Extension A
+    (0x4E00, 0x9FFF),   # CJK Unified Ideographs
+    (0x3000, 0x303F),   # CJK Symbols and Punctuation
+    (0xFE30, 0xFE4F),   # CJK Compatibility Forms
+    (0xFF00, 0xFFEF),   # Halfwidth and Fullwidth Forms
+    (0x20000, 0x2FFFF),  # CJK Extensions B–F (HKSCS mappings)
+)
+
+
+def _plausibility(text: str) -> Tuple[int, int]:
+    """Return ``(implausible, cjk)`` counts for scoring a candidate decoding."""
+    implausible = cjk = 0
+    for ch in text[:65536]:
+        cp = ord(ch)
+        if cp < 0x80:
+            continue
+        if any(lo <= cp <= hi for lo, hi in _ALLOWED_RANGES):
+            cjk += 1
+        else:
+            implausible += 1
+    return implausible, cjk
+
+
+def _best_cjk_encoding(data: bytes) -> Optional[str]:
+    """Pick the most plausible CJK decoding (fewest mojibake chars, then HK priority)."""
+    best_key = None
+    best_enc: Optional[str] = None
+    for priority, enc in enumerate(_CJK_FALLBACKS):
+        try:
+            text = data.decode(enc)
+        except UnicodeDecodeError:
+            continue
+        implausible, cjk = _plausibility(text)
+        key = (implausible, -cjk, priority)
+        if best_key is None or key < best_key:
+            best_key, best_enc = key, enc
+    return best_enc
+
+
+def _bom_encoding(data: bytes) -> Optional[str]:
+    for bom, enc in (
+        (codecs.BOM_UTF32_LE, "utf-32-le"),
+        (codecs.BOM_UTF32_BE, "utf-32-be"),
+        (codecs.BOM_UTF8, "utf-8-sig"),
+        (codecs.BOM_UTF16_LE, "utf-16-le"),
+        (codecs.BOM_UTF16_BE, "utf-16-be"),
+    ):
+        if data.startswith(bom):
+            return enc
+    return None
+
+
+def _utf16_without_bom(data: bytes) -> Optional[str]:
+    """Detect BOM-less UTF-16 from the NUL-byte distribution of ASCII-heavy text."""
+    sample = data[:4096]
+    if len(sample) < 8:
+        return None
+    even, odd = sample[0::2], sample[1::2]
+    even_nul = even.count(0) / max(len(even), 1)
+    odd_nul = odd.count(0) / max(len(odd), 1)
+    if odd_nul > 0.6 and even_nul < 0.2:
         return "utf-16-le"
-    if data.startswith(b"\xfe\xff"):
+    if even_nul > 0.6 and odd_nul < 0.2:
         return "utf-16-be"
-    if data.startswith(b"\xef\xbb\xbf"):
-        return "utf-8-sig"
-    return "utf-8"
+    return None
+
+
+def detect_encoding(data: bytes, content_type: Optional[str] = None) -> str:
+    """Best-guess the text encoding of ``data`` (never raises).
+
+    Order: explicit ``charset=`` > BOM > BOM-less UTF-16 > strict UTF-8 >
+    HK-priority CJK fallbacks (big5, big5-hkscs, gb18030, gbk) > utf-8.
+    A Big5/GB18030 file cannot be told apart from bytes alone, so the HK-priority
+    order (Big5 first) is the deliberate default; a ``charset=`` hint overrides it.
+    """
+    if not data:
+        return "utf-8"
+    hint = _charset_from_content_type(content_type)
+    if hint:
+        return hint
+    bom = _bom_encoding(data)
+    if bom:
+        return bom
+    utf16 = _utf16_without_bom(data)
+    if utf16:
+        return utf16
+    try:
+        data.decode("utf-8")
+        return "utf-8"
+    except UnicodeDecodeError:
+        pass
+    best = _best_cjk_encoding(data)
+    return best or "utf-8"
+
+
+def decode_text(data: bytes, content_type: Optional[str] = None) -> Tuple[str, str]:
+    """Decode ``data`` and return ``(text, encoding_actually_used)``.
+
+    The returned encoding is the one actually used to decode (never a guess that
+    differs from reality), and the function never raises — non-decodable bytes are
+    replaced and the encoding is marked ``(lossy)``.
+    """
+    encoding = detect_encoding(data, content_type)
+    try:
+        text = data.decode(encoding)
+    except UnicodeDecodeError:
+        return (data.decode(encoding, errors="replace").lstrip("\ufeff"),
+                f"{encoding} (lossy)")
+    return text.lstrip("\ufeff"), encoding
 
 
 # Signature bytes of common binary resources. These must never be text-decoded.
@@ -49,20 +178,9 @@ def detect_binary(data: bytes, url: Optional[str] = None) -> Optional[str]:
     return None
 
 
-def _decode_text(data: bytes) -> str:
-    """Decode bytes and strip any BOM. Falls back to Big5 for HK government CSVs."""
-    encoding = detect_encoding(data)
-    try:
-        text = data.decode(encoding)
-    except UnicodeDecodeError:
-        for fallback in ("big5", "big5-hkscs", "gb18030"):
-            try:
-                text = data.decode(fallback)
-                return text.lstrip("\ufeff")
-            except UnicodeDecodeError:
-                continue
-        raise
-    return text.lstrip("\ufeff")
+def _decode_text(data: bytes, content_type: Optional[str] = None) -> str:
+    """Decode bytes via :func:`decode_text` (never raises)."""
+    return decode_text(data, content_type)[0]
 
 
 def detect_delimiter(text: str) -> str:
@@ -73,14 +191,14 @@ def detect_delimiter(text: str) -> str:
     return "\t" if tab_count > comma_count else ","
 
 
-def parse_json(data: bytes) -> Dict[str, Any]:
+def parse_json(data: bytes, content_type: Optional[str] = None) -> Dict[str, Any]:
     """Parse JSON bytes into a Python object."""
-    return json.loads(_decode_text(data))
+    return json.loads(_decode_text(data, content_type))
 
 
-def parse_xml(data: bytes) -> Dict[str, Any]:
+def parse_xml(data: bytes, content_type: Optional[str] = None) -> Dict[str, Any]:
     """Parse XML bytes and return a structural summary."""
-    text = _decode_text(data)
+    text = _decode_text(data, content_type)
     try:
         root = ET.fromstring(text)
     except ET.ParseError as exc:
@@ -103,10 +221,9 @@ def parse_xml(data: bytes) -> Dict[str, Any]:
     }
 
 
-def parse_csv(data: bytes) -> Dict[str, Any]:
-    """Parse CSV bytes, handling UTF-16-LE and tab-delimited files."""
-    encoding = detect_encoding(data)
-    text = _decode_text(data)
+def parse_csv(data: bytes, content_type: Optional[str] = None) -> Dict[str, Any]:
+    """Parse CSV bytes; auto-detect encoding (UTF-8/16, Big5, HKSCS, GB18030) and delimiter."""
+    text, encoding = decode_text(data, content_type)
     delimiter = detect_delimiter(text)
 
     reader = csv.reader(io.StringIO(text), delimiter=delimiter)
@@ -181,7 +298,7 @@ def detect_format(data: bytes, content_type: Optional[str] = None, url: Optional
         pass
 
     try:
-        ET.fromstring(data.decode(detect_encoding(data)))
+        ET.fromstring(decode_text(data)[0])
         return "xml"
     except Exception:
         pass
@@ -216,9 +333,9 @@ def parse_data(
         }
 
     if fmt == "json":
-        return {"format": "json", "data": parse_json(data)}
+        return {"format": "json", "data": parse_json(data, content_type)}
 
     if fmt == "xml":
-        return parse_xml(data)
+        return parse_xml(data, content_type)
 
-    return parse_csv(data)
+    return parse_csv(data, content_type)
