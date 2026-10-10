@@ -75,17 +75,36 @@ bash ./hk.sh experience-embed   # ~120 experiences (seconds)
 Both are incremental: re-running only re-embeds content that changed. The committed
 shards in `data/catalog/` and `data/experiences.jsonl` mean no crawl is needed.
 
-**6. Smoke test**
+**6. Validate the skill loop — 3 hard questions**
+
+Setup is complete only when the skill loop runs end-to-end. Drive each question
+below through all five steps of [`SKILL.md`](SKILL.md) — Step 1
+(`experience-search`) → Step 2 (`catalog-search`) → Step 3 (`info`) → Step 4
+(`test`) → Step 5 (`experience-log` + `log-render`) — and confirm a sourced
+answer, or an honest "no dataset". None has a recorded recipe, two need a
+cross-dataset join and live endpoints, so this also exercises Step 5's memory
+write.
+
+1. **Q6 — crime trend by district** (`security-` category; likely CSV/XLSX):
+   *"Which district saw the largest year-on-year % increase in reported violent
+   crimes in the most recent full year, and what was the change?"*
+2. **Q7 — school places per child** (education + population cross-join):
+   *"Which district has the most primary school places per 5-year-old child, and
+   is it above or below the territory-wide average?"*
+3. **Q8 — Mainland arrivals + hotel occupancy** (tourism + commerce):
+   *"How many Mainland Chinese visitors arrived last month, and what was the
+   average hotel occupancy rate for the same period?"*
+
+Sanity-check the stores first:
 
 ```bash
-bash ./hk.sh experience-search "gym room Cheung Sha Wan" --top-n 3
-bash ./hk.sh catalog-search "康文署羽毛球場" --top-n 3
-bash ./hk.sh embed-status
+bash ./hk.sh embed-status     # active backend + match for both stores
 ```
 
-Step 1 should surface past experiences; Step 2 should return LCSD badminton
-datasets; `embed-status` should show the active backend and `match` for both
-stores. Setup is complete.
+A run is a PASS when, for each question, the answer cites the dataset ID, the
+endpoint queried, and the data's own HKT timestamp (or states clearly that no
+dataset exists), and Step 5 has recorded one experience card. Record anything
+that breaks — a dead endpoint, a missing file, an install error.
 
 ---
 
