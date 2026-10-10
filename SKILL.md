@@ -46,17 +46,21 @@ same commands work as `bash ./hk.sh "<subcommand>" …`.
 bash "$SKILL_DIR/hk.sh" experience-search "<user query>"
 ```
 
-Semantic search over past experiences — **positive** (a working recipe) and
-**negative** (a dead end):
+Returns a relevance-ranked, **paged** list of past experiences — **positive** (a
+working recipe) and **negative** (a dead end). These are *prior answers to
+similar questions, presented for you to judge* — not verdicts. Cards below a
+similarity floor are withheld (`No relevant experience card found.`). Page with
+`--page`/`--per-page`, filter with `--kind positive|negative`.
 
 - **positive** → read the cited `references/...md`, follow the recipe, then run
   Steps 3–4 to refresh live endpoints.
-- **negative**, `outcome: unavailable` → the data does not exist on data.gov.hk;
-  answer accordingly **without re-searching**.
+- **negative**, `outcome: unavailable` → likely no data on data.gov.hk — but
+  **confirm with a quick Step 2 `catalog-search` before concluding**, since a
+  near-miss card can rank for an unrelated query.
 - **negative**, `outcome: pitfall` → this *path* is dead/retired but the data may
   still live elsewhere. Do **not** stop: follow the card's `caveats`/`method`
   (e.g. a retired endpoint, a moved portal) and re-route.
-- no useful hit → proceed to Step 2.
+- no relevant card → proceed to Step 2.
 
 Experiences carry a `date` and can be superseded — check it, and still run Steps 3–4
 for live data.
@@ -112,10 +116,11 @@ specific query:
 
 **Write a reference doc only when the recipe is non-trivial** (endpoint quirks,
 multi-endpoint joins, proxy logic): `cp ./references/template.md
-./references/<category>-<dataset>.md`, add a row to `references/index.md` *and* an
-entry under the matching `### Category` heading, cite it via `--source`, then
-`bash "$SKILL_DIR/hk.sh" reindex`. For a dead end there is no doc — log a **negative** card
-instead: `… experience-log --kind negative --topic "<what was asked>"
+./references/<category>-<dataset>.md` and fill it in, then run
+`bash "$SKILL_DIR/hk.sh" reindex` — it rebuilds `references/search-index.json`
+*and* the generated `references/index.md` registry (never edit `index.md` by
+hand). Cite the doc via `--source` on the card. For a dead end there is no doc —
+log a **negative** card instead: `… experience-log --kind negative --topic "<what was asked>"
 --outcome unavailable --method "<what was searched>" --caveat "<closest proxy>"`.
 
 **Hard gate** — if any cannot be stated true, say "Step 5 incomplete —

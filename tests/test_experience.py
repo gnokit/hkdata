@@ -52,6 +52,20 @@ def _fake_embed(texts):
     return out
 
 
+def _orth_embed(texts):
+    """Orthogonal one-hot embeddings — real (non-baseline) similarities."""
+    out = []
+    for text in texts:
+        low = text.lower()
+        if "gym" in low or "健身" in low:
+            out.append([1.0, 0.0, 0.0])
+        elif "cctv" in low or "camera" in low or "閉路電視" in low:
+            out.append([0.0, 1.0, 0.0])
+        else:
+            out.append([0.0, 0.0, 1.0])
+    return out
+
+
 def _ephemeral():
     return chromadb.EphemeralClient()
 
@@ -130,6 +144,52 @@ def test_search_empty_store(exp_path):
     hits = experience.search("anything", embed_fn=_fake_embed, client=_ephemeral(),
                              collection_name="exp_empty", verbose=False)
     assert hits == []
+
+
+def test_search_no_relevant_card(exp_path):
+    records = [experience.normalize(POSITIVE)]
+    client = _ephemeral()
+    experience.upsert_experiences(records, embed_fn=_orth_embed, client=client,
+                                  collection_name="exp_norel", verbose=False)
+    # Unrelated query: nothing clears the floor -> no false "match".
+    assert experience.search("zzz unrelated", embed_fn=_orth_embed, client=client,
+                             collection_name="exp_norel", verbose=False) == []
+    # Related query clears the floor and carries a real similarity score.
+    hits = experience.search("gym", embed_fn=_orth_embed, client=client,
+                             collection_name="exp_norel", verbose=False)
+    assert hits and hits[0]["topic"] == POSITIVE["topic"]
+    assert hits[0]["similarity"] >= experience.DEFAULT_MIN_SIM
+
+
+def test_search_min_sim_gates_dense(exp_path):
+    records = [experience.normalize(POSITIVE)]
+    client = _ephemeral()
+    experience.upsert_experiences(records, embed_fn=_orth_embed, client=client,
+                                  collection_name="exp_floor", verbose=False)
+    # "gymming" embeds like "gym" (dense sim 1.0) but is not a literal token in
+    # the doc, so only the dense gate applies: a floor above 1.0 filters it out.
+    assert experience.search("gymming", embed_fn=_orth_embed, client=client,
+                             collection_name="exp_floor", min_sim=1.01,
+                             verbose=False) == []
+    assert experience.search("gymming", embed_fn=_orth_embed, client=client,
+                             collection_name="exp_floor", min_sim=0.5,
+                             verbose=False)
+
+
+def test_search_pagination(exp_path):
+    records = [experience.normalize({**POSITIVE, "topic": f"gym room {i}"})
+               for i in range(5)]
+    client = _ephemeral()
+    experience.upsert_experiences(records, embed_fn=_orth_embed, client=client,
+                                  collection_name="exp_page", verbose=False)
+    page1 = experience.search("gym", embed_fn=_orth_embed, client=client,
+                              collection_name="exp_page", top_n=2, offset=0,
+                              min_sim=0.0, verbose=False)
+    page2 = experience.search("gym", embed_fn=_orth_embed, client=client,
+                              collection_name="exp_page", top_n=2, offset=2,
+                              min_sim=0.0, verbose=False)
+    assert len(page1) == 2 and len(page2) == 2
+    assert {h["id"] for h in page1}.isdisjoint({h["id"] for h in page2})
 
 
 # ---------------------------------------------------------------------------

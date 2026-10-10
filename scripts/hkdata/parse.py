@@ -20,6 +20,35 @@ def detect_encoding(data: bytes) -> str:
     return "utf-8"
 
 
+# Signature bytes of common binary resources. These must never be text-decoded.
+_BINARY_MAGIC = (
+    (b"PK\x03\x04", "zip"),               # zip (also xlsx/ods/odt)
+    (b"PK\x05\x06", "zip"),               # empty zip archive
+    (b"%PDF-", "pdf"),
+    (b"\x89PNG\r\n\x1a\n", "png"),
+    (b"\xff\xd8\xff", "jpeg"),
+    (b"GIF87a", "gif"),
+    (b"GIF89a", "gif"),
+    (b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1", "xls"),  # legacy OLE (xls/doc)
+)
+
+_XLSX_EXTS = (".xlsx", ".xlsm", ".ods", ".odt")
+
+
+def detect_binary(data: bytes, url: Optional[str] = None) -> Optional[str]:
+    """Return a binary format label if ``data`` carries a known magic signature.
+
+    Returns ``None`` for text resources. ``url`` refines a zip archive into
+    ``xlsx`` when the extension says it is a spreadsheet.
+    """
+    for magic, fmt in _BINARY_MAGIC:
+        if data.startswith(magic):
+            if fmt == "zip" and url and url.lower().split("?")[0].endswith(_XLSX_EXTS):
+                return "xlsx"
+            return fmt
+    return None
+
+
 def _decode_text(data: bytes) -> str:
     """Decode bytes and strip any BOM. Falls back to Big5 for HK government CSVs."""
     encoding = detect_encoding(data)
@@ -113,15 +142,31 @@ def detect_format(data: bytes, content_type: Optional[str] = None, url: Optional
             return "csv"
         if "html" in ct:
             return "html"
+        if "pdf" in ct:
+            return "pdf"
+        if "zip" in ct:
+            return "zip"
+        if "spreadsheet" in ct or "excel" in ct:
+            return "xlsx"
 
     if url:
-        url_lower = url.lower()
+        url_lower = url.lower().split("?")[0]
         if url_lower.endswith(".json"):
             return "json"
         if url_lower.endswith(".xml"):
             return "xml"
         if url_lower.endswith(".csv"):
             return "csv"
+        if url_lower.endswith((".xlsx", ".xlsm", ".ods", ".odt")):
+            return "xlsx"
+        if url_lower.endswith((".zip", ".xls")):
+            return "zip" if url_lower.endswith(".zip") else "xls"
+        if url_lower.endswith(".pdf"):
+            return "pdf"
+
+    binary = detect_binary(data, url)
+    if binary:
+        return binary
 
     if looks_like_html(data):
         return "html"
@@ -143,6 +188,9 @@ def detect_format(data: bytes, content_type: Optional[str] = None, url: Optional
     return "csv"
 
 
+_BINARY_FORMATS = frozenset({"zip", "xlsx", "xls", "pdf", "png", "jpeg", "gif"})
+
+
 def parse_data(
     data: bytes,
     content_type: Optional[str] = None,
@@ -150,6 +198,14 @@ def parse_data(
 ) -> Dict[str, Any]:
     """Parse data bytes according to detected format and return a summary."""
     fmt = detect_format(data, content_type=content_type, url=url)
+
+    if fmt in _BINARY_FORMATS:
+        return {
+            "format": fmt,
+            "note": "Binary resource (archive/document) — download and parse it "
+                    "locally; it is not a text/JSON/CSV endpoint.",
+            "bytes": len(data),
+        }
 
     if fmt == "html":
         return {

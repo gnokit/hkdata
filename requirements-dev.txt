@@ -1,0 +1,9 @@
+# Development / test dependencies (optional).
+#
+# Setup:
+#   .venv/bin/pip install -r requirements-vectors.txt -r requirements-dev.txt
+#   .venv/bin/python -m pytest tests/ -q
+#
+# The suite imports chromadb lazily (tests skip if it is absent), so pytest is
+# the only hard requirement here.
+pytest>=8

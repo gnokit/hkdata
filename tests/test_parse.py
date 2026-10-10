@@ -1,6 +1,7 @@
 import json
 
 from hkdata.parse import (
+    detect_binary,
     detect_delimiter,
     detect_encoding,
     detect_format,
@@ -91,3 +92,44 @@ def test_parse_data_csv():
     result = parse_data(b"a,b\n1,2")
     assert result["format"] == "csv"
     assert result["headers"] == ["a", "b"]
+
+
+# ---------------------------------------------------------------------------
+# Binary resources (XLSX/ZIP/PDF) must never be text-decoded
+# ---------------------------------------------------------------------------
+
+
+def test_detect_binary_zip():
+    assert detect_binary(b"PK\x03\x04rest") == "zip"
+
+
+def test_detect_binary_xlsx_by_extension():
+    assert detect_binary(b"PK\x03\x04rest", url="http://x/DC_21C.xlsx") == "xlsx"
+
+
+def test_detect_binary_pdf():
+    assert detect_binary(b"%PDF-1.7\nstuff") == "pdf"
+
+
+def test_detect_binary_none_for_text():
+    assert detect_binary(b"a,b\n1,2") is None
+
+
+def test_detect_format_zip_content_type():
+    assert detect_format(b"\x00\x01\x02p", content_type="application/zip") == "zip"
+
+
+def test_parse_data_zip_does_not_crash():
+    result = parse_data(b"PK\x03\x04\x00\x00binarydata", url="http://x/DC_21C.zip")
+    assert result["format"] == "zip"
+    assert "note" in result and result["bytes"] > 0
+
+
+def test_parse_data_xlsx_does_not_crash():
+    result = parse_data(b"PK\x03\x04\x00\x00binarydata", url="http://x/DC_21C.xlsx")
+    assert result["format"] == "xlsx"
+
+
+def test_parse_data_xls_by_magic():
+    result = parse_data(b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1\x00\x00")
+    assert result["format"] == "xls"

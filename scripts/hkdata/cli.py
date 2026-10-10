@@ -13,8 +13,8 @@ from . import catalog
 from . import experience
 from . import vectors
 from .common import USER_AGENT
-from .inspect import info, info_multiple
-from .index import build_index, save_index, search_local
+from .inspect import info_multiple
+from .index import build_index, render_index_md, save_index, search_local
 from .logs import log_search, render
 from .parse import parse_data
 
@@ -57,23 +57,17 @@ def cmd_info(args: argparse.Namespace) -> int:
         _eprint("Error: at least one dataset ID is required.")
         return 1
 
-    if len(ids) == 1:
-        try:
-            data = info(ids[0])
-        except RuntimeError as exc:
-            _eprint(f"Error: {exc}")
-            return 1
-        print(json.dumps(data, ensure_ascii=False, indent=2))
-        return 0
-
+    # Always emit a JSON array, so consumers never special-case 1-vs-N.
     results = info_multiple(ids)
     output = []
+    errors = 0
     for dsid, result in zip(ids, results):
         if result.get("error"):
             _eprint(f"Error for '{dsid}': {result['error']}")
+            errors += 1
         output.append(result["data"])
     print(json.dumps(output, ensure_ascii=False, indent=2))
-    return 0
+    return 1 if errors == len(ids) else 0
 
 
 def cmd_test(args: argparse.Namespace) -> int:
@@ -108,7 +102,9 @@ def cmd_test(args: argparse.Namespace) -> int:
 def cmd_reindex(args: argparse.Namespace) -> int:
     index = build_index()
     save_index(index)
-    _eprint(f"Rebuilt references/search-index.json with {index['count']} datasets.")
+    render_index_md(index)
+    _eprint(f"Rebuilt references/search-index.json and references/index.md "
+            f"with {index['count']} datasets.")
     return 0
 
 
@@ -125,8 +121,9 @@ def cmd_search_local(args: argparse.Namespace) -> int:
                 f"{record['category']} | {record['filename']}"
             )
         else:
+            # The record title already carries a "[kind]" prefix — don't repeat it.
             print(
-                f"{score:.2f} | [{rtype}] {record['title']} | "
+                f"{score:.2f} | {record['title']} | "
                 f"{record['description'][:120]}..."
             )
     return 0
@@ -226,27 +223,48 @@ def cmd_experience_search(args: argparse.Namespace) -> int:
     if not _require_chromadb():
         return 1
     query = " ".join(args.keywords)
+    paths = catalog.default_paths()
     embedder = _resolve_embedder(args)
-    _warn_store_mismatch(catalog.default_paths(), experience.COLLECTION_NAME,
-                         embedder)
+    if experience.count(paths) == 0:
+        print("No experiences yet. Run: hkdata.py experience-migrate && "
+              "hkdata.py experience-embed")
+        return 0
+    _warn_store_mismatch(paths, experience.COLLECTION_NAME, embedder)
     try:
-        results = experience.search(
-            query, top_n=args.top_n, kind=args.kind,
+        hits = experience.search(
+            query, top_n=None, offset=0, min_sim=args.min_sim, kind=args.kind,
             embed_fn=embedder.embed,
             query_instruction=embedder.query_instruction)
     except RuntimeError as exc:
         _eprint(f"Error: {exc}")
         return 1
     if args.json:
-        print(json.dumps(results, ensure_ascii=False, indent=2))
+        print(json.dumps(hits, ensure_ascii=False, indent=2))
         return 0
-    if not results:
-        print(f"No experience matches for: {query}")
+    if not hits:
+        print("No relevant experience card found.")
         return 0
-    for item in results:
-        datasets = ", ".join(item["datasets"]) or "-"
-        print(f"{item['score']:.4f} | [{item['kind']}] {item['topic']} | "
-              f"{datasets} | {item['date'] or '-'} | {item['source']}")
+
+    per_page = args.top_n if args.top_n is not None else args.per_page
+    per_page = max(1, per_page)
+    page = max(1, args.page)
+    total = len(hits)
+    pages = (total + per_page - 1) // per_page
+    offset = (page - 1) * per_page
+    window = hits[offset:offset + per_page]
+    if not window:
+        print(f"No results on page {page} — {total} experience(s), "
+              f"{pages} page(s).")
+        return 0
+    print(f"Showing {offset + 1}-{offset + len(window)} of {total} experiences "
+          f"(page {page}/{pages})")
+    print()
+    for n, item in enumerate(window, start=offset + 1):
+        topic = " ".join(str(item["topic"]).split())
+        source = " ".join(str(item["source"]).split())
+        datasets = ", ".join(" ".join(str(d).split()) for d in item["datasets"]) or "-"
+        print(f"{n}. [{item['kind']}] {topic} | {datasets} | "
+              f"{item['date'] or '-'} | {source}")
     return 0
 
 
@@ -322,7 +340,11 @@ def cmd_catalog_status(args: argparse.Namespace) -> int:
     print(f"Locales:       {', '.join(data['langs']) or '-'}")
     print(f"Shards:        {data['shards']} ({data['shard_bytes'] / 1e6:.1f} MB)")
     if vec.get("available"):
-        print(f"Vector store:  {vec.get('count', 0)} datasets")
+        count = vec.get("count", 0)
+        if count:
+            print(f"Vector store:  {count} datasets")
+        else:
+            print("Vector store:  empty (run: catalog-embed)")
         print(f"Experiences:   {experience.count(paths)} cards")
     else:
         print("Vector store:  unavailable (install chromadb in the venv)")
@@ -350,16 +372,22 @@ def cmd_embed_status(args: argparse.Namespace) -> int:
     print(f"Model:       {embedder.model}")
     print(f"Fingerprint: {embedder.fingerprint}")
     print(f"Registered:  {', '.join(vectors.registered_providers())}")
+    rebuild = False
     for label, status in (("catalog", catalog_status),
                           ("experiences", exp_status)):
         if not status.get("available"):
             print(f"{label}: unavailable")
             continue
+        if status.get("empty"):
+            print(f"{label}: empty (0 vectors) — run the matching *-embed command")
+            continue
         match = "match" if status.get("match") else "MISMATCH"
+        if not status.get("match"):
+            rebuild = True
         print(f"{label}: {status.get('count', 0)} vectors | store "
               f"'{status.get('store_fingerprint')}' | {match}")
-    if not catalog_status.get("match") or not exp_status.get("match"):
-        _eprint("Rebuild the mismatched store with the matching *-embed command.")
+    if rebuild:
+        print("Rebuild the mismatched store with the matching *-embed command.")
     return 0
 
 
@@ -463,11 +491,17 @@ def build_parser() -> argparse.ArgumentParser:
     exp_search = subparsers.add_parser(
         "experience-search", help="Semantic search over past experiences (positive/negative)")
     exp_search.add_argument("keywords", nargs="+", help="Natural-language query")
-    exp_search.add_argument("--top-n", type=int, default=5, help="Max results (default: 5)")
+    exp_search.add_argument("--page", type=int, default=1, help="Page number, 1-based (default: 1)")
+    exp_search.add_argument("--per-page", type=int, default=5, help="Results per page (default: 5)")
+    exp_search.add_argument("--top-n", type=int, default=None,
+                            help="Alias for --per-page (kept for compatibility)")
+    exp_search.add_argument("--min-sim", type=float, default=experience.DEFAULT_MIN_SIM,
+                            help="Minimum cosine similarity to show a card (default: 0.5)")
     exp_search.add_argument("--kind", choices=["positive", "negative"],
                             help="Only return this kind of experience")
     _add_embed_args(exp_search)
-    exp_search.add_argument("--json", action="store_true", help="JSON output")
+    exp_search.add_argument("--json", action="store_true",
+                            help="JSON output (all matches, unpaged)")
     exp_search.set_defaults(func=cmd_experience_search)
 
     exp_log = subparsers.add_parser(

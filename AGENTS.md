@@ -66,8 +66,8 @@ negative) via `experience-log`, then `log-render`. The canonical hard gate is
 there; the repo-side specifics for **reference docs** apply only when the recipe
 is non-trivial (endpoint quirks, multi-endpoint joins, proxy logic):
 1. `cp ./references/template.md ./references/{category}-{dataset}.md` and fill it in.
-2. Add a row to the table in `references/index.md` AND an entry under the right `### Category` heading there.
-3. Cite the doc via `--source` on `experience-log`, then run `bash ./hk.sh reindex`.
+2. Run `bash ./hk.sh reindex` — it rebuilds `references/search-index.json` and the generated `references/index.md` registry (never edit `index.md` by hand).
+3. Cite the doc via `--source` on `experience-log`.
 4. One outcome → one card, and never both kinds for the same outcome.
 
 ## Category → filename prefix mapping (non-obvious ones)

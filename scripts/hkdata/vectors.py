@@ -341,8 +341,8 @@ def hybrid_search(query: str, paths: catalog.CatalogPaths, top_n: int = 10,
     Chroma has no ranked BM25. The keyword pass therefore runs the *same dense
     query* restricted by a case-insensitive substring filter, so candidates are
     still semantically ranked, then RRF merges the two rankings. Falls back to
-    dense-only when no token matches. Alias expansion maps abbreviations
-    (e.g. 康文署) onto their official names (康樂及文化事務署).
+    dense-only when no token matches. Alias expansion maps abbreviations (e.g.
+    康文署) onto their official names (康樂及文化事務署) in the keyword pass only.
     """
     if embed_fn is None:
         def embed_fn(texts: List[str]) -> List[List[float]]:
@@ -357,25 +357,26 @@ def hybrid_search(query: str, paths: catalog.CatalogPaths, top_n: int = 10,
         return []
 
     expanded = expand_query(query, aliases)
-    dense_text = query + ((" " + " ".join(expanded)) if expanded else "")
     fetch = max(top_n * 3, 20)
-    query_vector = embed_fn([query_instruction + dense_text])[0]
+    # Dense retrieval uses the raw query only: alias spellings are applied in the
+    # keyword pass below. Appending aliases here (康文署 → 康樂及文化事務署/LCSD/…)
+    # drowns the domain term (e.g. 羽毛球場) and drops the match.
+    query_vector = embed_fn([query_instruction + query])[0]
 
     dense_res = collection.query(query_embeddings=[query_vector], n_results=fetch,
                                  include=["metadatas", "distances"])
     dense = _result_dicts(dense_res)
     by_name = {item["name"]: item for item in dense}
 
-    # Keyword pass: run a densely-ranked, case-insensitive filtered query for
-    # each distinctive token (query terms + CJK alias names), then fuse them.
-    # Multi-word English aliases are left to the dense text (per-word tokens
-    # like "Department" would be too generic).
+    # Keyword pass: run a densely-ranked, case-insensitive substring query for
+    # each distinctive token (query terms + alias spellings). Multi-word aliases
+    # are matched as whole phrases, so generic single words don't leak in.
     tokens = [t for t in re.findall(r"[A-Za-z0-9\u3400-\u4dbf\u4e00-\u9fff]+", query)
               if len(t) >= 2]
     for value in expanded:
-        if value and not re.search(r"\s", value):
+        if value:
             tokens.append(value)
-    tokens = sorted(dict.fromkeys(tokens), key=len, reverse=True)[:4]
+    tokens = list(dict.fromkeys(tokens))[:4]
 
     keyword_names: List[str] = []
     for token in tokens:
@@ -438,6 +439,7 @@ def embed_status(paths: catalog.CatalogPaths,
         "count": 0,
         "store_fingerprint": None,
         "match": False,
+        "empty": False,
     }
     if not have_chromadb():
         return info
@@ -446,6 +448,12 @@ def embed_status(paths: catalog.CatalogPaths,
         collection = _collection(client, collection_name)
         info["available"] = True
         info["count"] = collection.count()
+        if info["count"] == 0:
+            # An empty store is not a mismatch — there is nothing to rebuild
+            # against, so don't flag it as one.
+            info["empty"] = True
+            info["match"] = True
+            return info
         existing = collection.get(limit=1, include=["metadatas"])
         if existing.get("metadatas") and existing["metadatas"][0]:
             info["store_fingerprint"] = existing["metadatas"][0].get("model") or ""

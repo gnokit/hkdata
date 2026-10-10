@@ -270,15 +270,26 @@ def count(paths: Optional[catalog.CatalogPaths] = None,
         return 0
 
 
+DEFAULT_MIN_SIM = 0.5
+
+
 def search(query: str, paths: Optional[catalog.CatalogPaths] = None,
-           top_n: int = 5, kind: Optional[str] = None,
+           top_n: Optional[int] = 5, offset: int = 0,
+           min_sim: float = DEFAULT_MIN_SIM, kind: Optional[str] = None,
            model: str = vectors.DEFAULT_MODEL,
            url: str = vectors.DEFAULT_OLLAMA_URL,
            collection_name: str = COLLECTION_NAME,
            embed_fn: Optional[Callable[[List[str]], List[List[float]]]] = None,
            client=None, verbose: bool = True,
            query_instruction: str = vectors.QUERY_INSTRUCTION) -> List[dict]:
-    """Semantic search over experiences, optionally filtered by ``kind``."""
+    """Return a relevance-ranked page of past experience cards.
+
+    Cards are ranked by **dense cosine similarity** (nearest first), with a
+    secondary keyword pass for literal-token recall. Cards below ``min_sim`` are
+    dropped, so an unrelated query returns fewer (or zero) cards instead of a
+    fixed-length list of loosely related ones. ``top_n=None`` returns all matches
+    (used for paging); ``offset`` pages through them.
+    """
     if embed_fn is None:
         def embed_fn(texts: List[str]) -> List[List[float]]:
             return vectors.embed_texts(texts, model=model, url=url)
@@ -292,48 +303,14 @@ def search(query: str, paths: Optional[catalog.CatalogPaths] = None,
         return []
 
     where = {"kind": kind} if kind in (KIND_POSITIVE, KIND_NEGATIVE) else None
-    expanded = vectors.expand_query(query)
-    dense_text = query + ((" " + " ".join(expanded)) if expanded else "")
-    query_vector = embed_fn([query_instruction + dense_text])[0]
-    fetch = max(top_n * 3, 20)
+    # The dense query uses the raw query only: alias expansion belongs to the
+    # keyword pass. Appending department aliases here (e.g. 康文署 → 康樂及文化
+    # 事務署/LCSD/…) drowns the domain term (e.g. 羽毛球場) and drops the match.
+    query_vector = embed_fn([query_instruction + query])[0]
+    total = collection.count()
 
-    dense = collection.query(query_embeddings=[query_vector], n_results=fetch,
-                             where=where, include=["metadatas", "distances"])
-    by_id: Dict[str, dict] = {}
-    for meta in dense["metadatas"][0]:
-        meta = meta or {}
-        by_id[meta.get("id", "")] = meta
-
-    keyword_ids: List[str] = []
-    tokens = [t for t in re.findall(r"[A-Za-z0-9\u3400-\u4dbf\u4e00-\u9fff]+", query)
-              if len(t) >= 2]
-    for value in expanded:
-        if value and not re.search(r"\s", value):
-            tokens.append(value)
-    for token in sorted(dict.fromkeys(tokens), key=len, reverse=True)[:4]:
-        try:
-            kw = collection.query(
-                query_embeddings=[query_vector], n_results=fetch, where=where,
-                where_document={"$regex": f"(?i){re.escape(token)}"},
-                include=["metadatas", "distances"])
-        except Exception:
-            continue
-        for meta in kw["metadatas"][0]:
-            meta = meta or {}
-            by_id.setdefault(meta.get("id", ""), meta)
-            keyword_ids.append(meta.get("id", ""))
-
-    scores = vectors._rrf_rank([m.get("id", "") for m in dense["metadatas"][0]])
-    for i, score in vectors._rrf_rank(keyword_ids).items():
-        scores[i] = scores.get(i, 0.0) + score
-
-    ranked = sorted(scores, key=lambda i: -scores[i])
-    results = []
-    for exp_id in ranked[:top_n]:
-        meta = by_id.get(exp_id)
-        if not meta:
-            continue
-        results.append({
+    def _card(meta: dict, exp_id: str, sim: Optional[float]) -> dict:
+        return {
             "id": exp_id,
             "kind": meta.get("kind", ""),
             "topic": meta.get("topic", ""),
@@ -343,9 +320,49 @@ def search(query: str, paths: Optional[catalog.CatalogPaths] = None,
             "outcome": meta.get("outcome", ""),
             "source": meta.get("source", ""),
             "date": meta.get("date", ""),
-            "score": scores[exp_id],
-        })
-    return results
+            "similarity": sim,
+        }
+
+    matched: List[dict] = []
+    seen: set = set()
+
+    dense = collection.query(query_embeddings=[query_vector], n_results=total,
+                             where=where, include=["metadatas", "distances"])
+    for meta, dist in zip(dense["metadatas"][0], dense["distances"][0]):
+        meta = meta or {}
+        exp_id = meta.get("id", "")
+        sim = 1.0 - float(dist)
+        if sim < min_sim:
+            continue
+        seen.add(exp_id)
+        matched.append(_card(meta, exp_id, sim))
+
+    # Keyword pass: literal-token recall (query terms + alias spellings, incl.
+    # multi-word official names), appended after the dense hits.
+    tokens = [t for t in re.findall(r"[A-Za-z0-9\u3400-\u4dbf\u4e00-\u9fff]+", query)
+              if len(t) >= 2]
+    for value in vectors.expand_query(query):
+        if value:
+            tokens.append(value)
+    for token in list(dict.fromkeys(tokens))[:4]:
+        try:
+            kw = collection.query(
+                query_embeddings=[query_vector], n_results=total, where=where,
+                where_document={"$regex": f"(?i){re.escape(token)}"},
+                include=["metadatas", "distances"])
+        except Exception:
+            continue
+        for meta, dist in zip(kw["metadatas"][0], kw["distances"][0]):
+            meta = meta or {}
+            exp_id = meta.get("id", "")
+            if exp_id in seen:
+                continue
+            seen.add(exp_id)
+            matched.append(_card(meta, exp_id, 1.0 - float(dist)))
+
+    if top_n is None:
+        return matched[offset:]
+    return matched[offset:offset + top_n]
 
 
 # ---------------------------------------------------------------------------

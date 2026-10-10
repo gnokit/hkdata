@@ -203,6 +203,7 @@ store can be regenerated at any time with `catalog-sync`.
 ## Tests
 
 ```bash
+.venv/bin/pip install -r requirements-vectors.txt -r requirements-dev.txt
 .venv/bin/python -m pytest tests/ -q
 ```
 

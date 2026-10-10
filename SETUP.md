@@ -58,22 +58,26 @@ Fetched:       3822
 Missing:       0
 Locales:       en, tc
 Shards:        8 (16.0 MB)
-Vector store:  unavailable
+Vector store:  empty (run: catalog-embed)
 ```
 
-`Vector store: unavailable` at this point is normal — it is built next. (Run with
-`bash ./hk.sh catalog-status` again after step 5 to see the dataset and experience
-counts.)
+`Vector store: empty` at this point is normal — it is built next. (If you run with
+plain `python3` and no `.venv`, ChromaDB is absent and it prints `unavailable` instead.
+Run `bash ./hk.sh catalog-status` again after step 5 to see the dataset and
+experience counts.)
 
 **5. Build the vector stores**
 
 ```bash
 bash ./hk.sh catalog-embed      # 3,822 datasets (~10 min)
-bash ./hk.sh experience-embed   # ~120 experiences (seconds)
+bash ./hk.sh experience-embed   # experiences are private; empty on a fresh clone (seconds)
 ```
 
-Both are incremental: re-running only re-embeds content that changed. The committed
-shards in `data/catalog/` and `data/experiences.jsonl` mean no crawl is needed.
+Both are incremental: re-running only re-embeds content that changed. Only the
+catalog shards in `data/catalog/` are committed, so no crawl is needed.
+`data/experiences.jsonl` is **private** (gitignored) and starts empty on a fresh
+clone — it grows as you use the skill. `experience-embed` on an empty store is a
+no-op that exits 0.
 
 **6. Validate the skill loop — 3 hard questions**
 
@@ -256,8 +260,9 @@ before the first push.
 | Symptom | Fix |
 |---|---|
 | `Vector store: unavailable` | You are running with plain `python3`, which has no `chromadb`. Use `bash ./hk.sh catalog-status`. |
+| `Vector store: empty (run: catalog-embed)` | Normal on a fresh clone — build the store with `bash ./hk.sh catalog-embed`. |
 | `ChromaDB is not installed` | `.venv/bin/pip install -r requirements-vectors.txt` |
 | `Ollama embedding failed` | The Ollama server is not running (`ollama serve`) or the model is missing (`ollama pull qwen3-embedding:0.6b`). |
 | `Vector store is empty` | Run `bash ./hk.sh catalog-embed`. |
 | `catalog-search` returns nothing useful | Confirm `catalog-status` shows `Vector store: 3822 datasets`; then try broader terms or add an abbreviation to `references/aliases.json`. |
-| Tests fail | `.venv/bin/python -m pytest tests/ -q` — the suite is stdlib-only and should pass without Ollama. |
+| Tests fail | `.venv/bin/pip install -r requirements-dev.txt` then `.venv/bin/python -m pytest tests/ -q` — the suite is stdlib-only and passes without Ollama. |
