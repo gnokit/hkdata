@@ -221,10 +221,16 @@ Two kinds of negative card (see Step 1 of [`SKILL.md`](../SKILL.md)):
 
 | Outcome | Meaning | Step 1 behaviour |
 |---|---|---|
-| `unavailable` | The data is not published on data.gov.hk at all | Stop; answer "not available" (optionally with a proxy) |
+| `unavailable` | The data is not published on data.gov.hk | Likely no data — **confirm with a quick `catalog-search` before answering "not available"** (optionally with a proxy); a near-miss card can rank for an unrelated query |
 | `pitfall` | This *path* is dead/retired, but the data may live elsewhere | Re-route via the card's `method`/`caveats`, then continue |
 
 Log `pitfall` only when there is a concrete re-route; otherwise `unavailable`.
+
+> **Step 1 is a ranked results page, not a verdict.** `experience-search` returns
+> the most relevant cards (paged, `--page`/`--per-page`), withholds cards below a
+> similarity floor, and prints `No relevant experience card found.` when nothing
+> is close. Apply the cards with judgement — never treat a single negative card as
+> proof that no dataset exists.
 
 ## Known Failure Patterns
 

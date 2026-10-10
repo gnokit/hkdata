@@ -224,8 +224,9 @@ shared through the link.
 This repo is meant to be **shareable as an engine**: `SKILL.md`, `scripts/`,
 `SETUP.md`, the three method docs under `references/`, and the pinned catalog
 shards. The knowledge you accumulate — `data/experiences.jsonl`, the
-`references/<dataset>.md` recipes, `logs/`, `references/index.md` and
-`search-index.json` — is **private** and untracked (see `.gitignore`).
+`references/<dataset>.md` recipes, and `logs/` — is **private** and untracked
+(see `.gitignore`), as are the files `reindex` generates from them
+(`references/index.md`, `references/search-index.json`).
 
 Install the pre-push gate once per clone:
 

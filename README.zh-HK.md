@@ -128,7 +128,7 @@ bash ./hk.sh embed-status
 
 | 命令 | 用途 |
 |---|---|
-| `experience-search "<query>"` | 過往經驗語意搜尋（正／負）— 第 1 步 |
+| `experience-search "<query>"` | 過往經驗排名搜尋（可翻頁，正／負）— 第 1 步 |
 | `experience-log --kind positive\|negative …` | 記錄並索引經驗（第 5 步） |
 | `experience-embed` / `experience-migrate` | 建立／重建經驗索引 |
 | `catalog-search "<query>"` | 完整 catalog 混合檢索 — 第 2 步 |
@@ -189,6 +189,7 @@ tests/                    pytest 測試
 ## 測試
 
 ```bash
+.venv/bin/pip install -r requirements-vectors.txt -r requirements-dev.txt
 .venv/bin/python -m pytest tests/ -q
 ```
 

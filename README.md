@@ -132,7 +132,7 @@ bash ./hk.sh embed-status
 
 | Command | Purpose |
 |---|---|
-| `experience-search "<query>"` | Semantic search over past experiences (±) — Step 1 |
+| `experience-search "<query>"` | Relevance-ranked, paged search over past experiences (±) — Step 1 |
 | `experience-log --kind positive\|negative …` | Record + index an experience (Step 5) |
 | `experience-embed` / `experience-migrate` | Build / regenerate the experience index |
 | `catalog-search "<query>"` | ChromaDB hybrid search over the full catalog — Step 2 |
