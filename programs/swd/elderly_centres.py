@@ -26,8 +26,10 @@ def elderly_centres() -> list:
 
     Quirks:
         - UTF-16-LE encoded and TAB-delimited despite the .csv extension
-        - decode utf-16, strip BOM, csv.reader with delimiter='\\t'
+          (not UTF-8 comma CSV) — decode utf-16, strip BOM, delimiter='\\t'
         - related: DE/DCU (List-of-DE-DCU.csv), STE (List-of-STE.csv) — same format
+        - Chinese keyword catalog hits for 長者 are unreliable; prefer English
+          synonyms (elderly / neighbourhood elderly centre) or this program
     """
     import csv
     import io

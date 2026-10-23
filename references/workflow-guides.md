@@ -21,6 +21,15 @@ The answer must never depend on the program existing. If the write fails or
 runs long, the answer still stands — the only cost is that the next similar
 question re-discovers the dataset, which takes seconds.
 
+## Pitfalls & unavailable (read when stuck)
+
+- Cross-cutting search/encoding traps: [`programs/_pitfalls.md`](../programs/_pitfalls.md)
+- Confirmed missing topics + proxies: [`data/unavailable.jsonl`](../data/unavailable.jsonl)
+  (see [`data/unavailable.md`](../data/unavailable.md) for agent usage)
+
+Do not write a fake runnable program that only encodes a pitfall or an
+unavailable topic — use Quirks / those two files instead.
+
 ## Query Response Template
 
 When answering queries using this skill, follow this structure:

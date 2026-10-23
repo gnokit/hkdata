@@ -24,7 +24,10 @@ def crime_overall() -> list:
         - "violent crime by month"
 
     Quirks:
-        - territory-wide only; no District Council breakdown exists on data.gov.hk
+        - territory-wide only; no District Council breakdown (violent crime
+          by district) exists on data.gov.hk — say so; do not invent a join
+        - older CKAN package_search often missed "crime" keywords; prefer
+          this program / catalog-search over raw CKAN
     """
     import csv
     import io

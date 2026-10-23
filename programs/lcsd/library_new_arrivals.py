@@ -135,6 +135,8 @@ def new_arrivals(collection="adult_books", language="chi", limit=None) -> list:
           acquisition history — it is a "what's new" feed, not a catalogue
         - each collection/language pair is a **separate resource** in the
           dataset; there is no single combined feed
+        - sort param must be ``sort=dateNewest`` (NOT ``sort=date``); endpoint
+          is ``/search/syndication``, not ``webcat.hkpl.gov.hk/rss/new``
         - ``date_added`` is converted from the feed's GMT ``pubDate`` to HKT
           (UTC+8); the raw value is kept in ``pub_date``
         - titles embed the responsibility statement ("/ A.Z.著."), so the

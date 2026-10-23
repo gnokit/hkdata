@@ -117,15 +117,27 @@ def catalogue_search(term, field="", limit=5, with_holdings=False) -> list:
           ``search_1=`` is accepted but **ignored** (it returns the unfiltered
           newest-first list), and ``field_1=title`` / ``field_1=author``
           restrict the field
+        - PHRASE must match the **catalogue title string** exactly — user
+          wording often differs (e.g. 「哈利波特與消失的密室」 vs catalogue
+          「哈利波特. 消失的密室」). On 0 hits, retry a shorter unique phrase
+          (subtitle) or the English original title
+        - correct endpoint is ``/search/syndication`` — NOT ``/rss/new``.
+          Valid sort values: ``sort=relevance`` and ``sort=dateNewest``;
+          ``sort=date`` is wrong and must not be used
         - the term must be percent-encoded — a ``+`` for the space makes a
           multi-word phrase match **nothing** and returns zero items
         - the feed returns at most **5 items** and has no pagination; run
-          several queries (title, Chinese title, author) to see more
+          several queries (title, Chinese title, author) to see more;
+          a full page of 5 may mean more exist
+        - merging relevance + dateNewest and deduping: mostly-overlap ≈
+          holdings exhausted; zero overlap ≈ more titles exist
         - one title usually has **several printings** with very different
           holdings — aggregate across records (see ``catalogue_availability``)
         - the record page is a Wicket HTML app; holdings live in the first
         ``<tbody>`` table of the 館藏項目 tab
         - search hits carry no date; holdings carry the live loan status
+        - there is no REST/OAI-PMH/SRU catalogue API on data.gov.hk — this
+          RSS syndication (+ HTML holdings scrape) is the supported path
     """
     import requests
 

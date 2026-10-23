@@ -28,6 +28,8 @@ def aqhi_now() -> list:
         - City Dashboard JSON lags RSS by ~1 hour; use RSS for the very latest
         - AQHI scale 1-10+ -> Low / Moderate / High / Very High / Serious
         - pollutant concentrations (PM2.5/NO2/...) live in a different endpoint
+        - Prefer this program over catalog keywords ``pollution`` / ``air quality``
+          — older CKAN search often missed EPD AQHI feeds
     """
     import json
     import urllib.request

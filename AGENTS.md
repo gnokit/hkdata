@@ -53,6 +53,31 @@ If a store is empty, it is probably not built:
 2. `bash ./hk.sh catalog-embed && bash ./hk.sh reindex`
 3. Then search with `bash ./hk.sh programs-search "<topic>"` or `catalog-search "<topic>"`
 
+## Pitfalls & unavailable memory
+
+Negative / gap memory lives in three layers (there is no separate
+`experiences.jsonl`):
+
+1. **Per-program `Quirks:`** in function docstrings (embedded by `reindex`) —
+   endpoint-specific traps (HKKF trailing slash, SWD UTF-16, webcat sort,
+   district `&`/`and`, …).
+2. **`programs/_pitfalls.md`** — cross-cutting search/encoding/tool traps.
+   **Not** a runnable program; read it when discovery fails. Do not invent a
+   fake function for pitfalls.
+3. **`data/unavailable.jsonl`** (+ short `data/unavailable.md`) — topics
+   confirmed missing on data.gov.hk (district unemployment rate, 殺校名單,
+   smart CCTV counts, SmartPLAY table-tennis session feeds, …). After
+   `programs-search` / `catalog-search` miss, check this list before claiming a
+   dataset exists.
+
+Flow: `programs-search` → `catalog-search` → if theme matches unavailable →
+say so + cite proxies → else Path B discovery.
+
+**`data_dictionary` (數據字典):** When summarizing or storing `package_show`
+results, do not drop the `data_dictionary` field. Only look up the matching
+data dictionary / guide when a dataset or API is unclear (odd response, complex
+structure); then answer. Not required on every query.
+
 ## Writing a program (the new "memory write")
 
 When Path B lands on a working recipe, persist it as a function — this is the

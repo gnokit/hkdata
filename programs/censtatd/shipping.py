@@ -29,6 +29,11 @@ def port_cargo_throughput() -> list:
         - needs a browser-like User-Agent
         - period for quarterly is YYYYQQ (e.g. 202603 = Q1 2026)
         - empty DIRECTION/SHIPMENT_TYPE = total
+        - NEVER use Censtatd report viewer ``wbr.html?download_csv=1`` —
+          that flag is a client-side JS action and curl/requests get HTML,
+          not CSV. Always use ``api/get.php?id=…`` (this function) for
+          programmatic cargo figures; for live vessel movements use
+          mardep.vessel_arrivals instead
     """
     import json
     import urllib.request

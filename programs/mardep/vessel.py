@@ -28,7 +28,10 @@ def vessel_arrivals(feed: str = "arrived") -> list:
     Quirks:
         - feed codes: arrived=RP05005i, due=RP04005i, inport=RP06005i, departed=RP05505i
         - XML, not JSON — parse with xml.etree; one <G_SQL1> per vessel
-        - snapshot only (36 h), not historical monthly aggregates
+        - snapshot only (36 h), not historical monthly aggregates — there is
+          no programmatic monthly vessel-arrival count API; for cargo tonnage
+          trends use censtatd port_cargo_throughput (JSON API), not Censtatd
+          wbr.html CSV download
     """
     import urllib.request
     import xml.etree.ElementTree as ET

@@ -28,6 +28,9 @@ def primary_enrolment_by_district() -> list:
         - UTF-8 with BOM — decode utf-8-sig
         - district names use "&" (Central & Western); normalise to "and" for joins
         - "Kwai Tsing" row label has a trailing space
+        - enrolment ≠ places allocation; exact 5-year-old / primary-places
+          demand by district is not published — use this enrolment table +
+          Censtatd age/district population as proxies and say so
     """
     import csv
     import io
@@ -106,7 +109,10 @@ def day_schools_by_sector() -> list:
     Quirks:
         - wide format: years are columns, parse by header
         - UTF-8 with BOM + CRLF — decode utf-8-sig
-        - no dataset enumerates individual school closures
+        - no dataset enumerates individual school closures / 殺校名單 —
+          proxy via historical-archive diffs of SchoolBasicInfo.xml
+          SchoolNumber sets + these net counts; verify names against
+          EDB/LegCo (see data/unavailable.jsonl)
     """
     import csv
     import io

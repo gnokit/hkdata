@@ -26,8 +26,9 @@ def prh_estates() -> list:
         - "list PRH estates by district"
 
     Quirks:
-        - district names use "&" (Central & Western) — normalise to "and" before
-          joining with Censtatd data
+        - district names use "&" (Central & Western) — Censtatd / many C&SD
+          tables use "and"; always ``replace("&", "and")`` (and strip spaces
+          consistently) before any HA↔Censtatd join
         - related PSI exports: hos-courts, shopping-centres, flatted-factory
     """
     import json

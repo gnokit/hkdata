@@ -29,6 +29,9 @@ def unemployment_rate() -> list:
         - needs a browser-like User-Agent
         - sv codes: UE (unemployed persons), UR (unemployment rate %)
         - empty AGE/SEX means total
+        - territory-wide only — District Council unemployment rate is NOT
+          published (GHS sample too small). For district labour stats use
+          labour_force_by_district (LF / LFPR only; LFPR ≠ UR)
     """
     import json
     import urllib.request
@@ -70,6 +73,9 @@ def labour_force_by_district() -> list:
         - needs a browser-like User-Agent
         - sv codes: LF (labour force '000), LFPR (participation rate %)
         - DC codes A-T map to districts (A=Central and Western, ..., T=Islands)
+        - district labels use "and" (Central and Western) — Housing Authority
+          / EDB often use "&"; normalise before joins
+        - this is NOT unemployment by district; say so if the user asked for UR
     """
     import json
     import urllib.request
